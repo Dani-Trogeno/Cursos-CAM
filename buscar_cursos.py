@@ -143,6 +143,89 @@ CABECERA = (
 )
 
 
+# ---------------------------------------------------------------- avisos ----
+
+DIAS_ANTES = int(os.environ.get("AVISO_DIAS_ANTES", "3"))    # aviso "abre pronto"
+DIAS_CIERRE = int(os.environ.get("AVISO_DIAS_CIERRE", "2"))  # aviso "último aviso"
+NTFY_SERVIDOR = os.environ.get("NTFY_SERVIDOR", "https://ntfy.sh").rstrip("/")
+NTFY_TEMA = os.environ.get("NTFY_TEMA", "").strip()
+MAX_AVISOS_SUELTOS = 6  # con más avisos que esto, se manda un único resumen
+
+TIPOS = ("nuevo", "pronto", "abierto", "cierre")
+AVISO = {
+    "nuevo": ("🆕 Nuevo curso MOC", "new", 4),
+    "pronto": ("⏰ Abre pronto la inscripción", "alarm_clock", 3),
+    "abierto": ("✅ Inscripción abierta", "white_check_mark", 4),
+    "cierre": ("⚠️ Último aviso: cierra la inscripción", "warning", 5),
+}
+
+
+def dias_hasta(texto: str | None) -> int | None:
+    f = parse_fecha(texto)
+    return (f - HOY).days if f else None
+
+
+def tipos_de_aviso(c: dict, es_nuevo: bool) -> list[str]:
+    """Avisos que le tocan hoy a un curso según sus fechas."""
+    tipos = []
+    if es_nuevo and c["estado"] != "cerrado":
+        tipos.append("nuevo")
+    hasta_inicio = dias_hasta(c.get("inscripcion_inicio"))
+    if c["estado"] == "próximo" and hasta_inicio is not None and hasta_inicio <= DIAS_ANTES:
+        tipos.append("pronto")
+    if c["estado"] == "abierto":
+        tipos.append("abierto")
+        hasta_fin = dias_hasta(c.get("inscripcion_fin"))
+        if hasta_fin is not None and hasta_fin <= DIAS_CIERRE:
+            tipos.append("cierre")
+    return tipos
+
+
+def texto_curso(c: dict) -> str:
+    lineas = [c["titulo"]]
+    ini, fin = c.get("inscripcion_inicio"), c.get("inscripcion_fin")
+    if ini or fin:
+        lineas.append(f"Inscripción: {ini or '?'} – {fin or '?'}")
+        d = dias_hasta(ini)
+        if c["estado"] == "próximo" and d is not None:
+            lineas.append("Abre mañana" if d == 1 else f"Abre en {d} días")
+        d = dias_hasta(fin)
+        if c["estado"] == "abierto" and d is not None:
+            lineas.append("¡Cierra hoy!" if d == 0 else "Cierra mañana" if d == 1 else f"Cierra en {d} días")
+    if c.get("curso_inicio"):
+        lineas.append(f"Curso: {c['curso_inicio']} – {c.get('curso_fin') or '?'}")
+    return "\n".join(lineas)
+
+
+def enviar_ntfy(titulo: str, mensaje: str, tags: list[str], prioridad: int, url: str) -> None:
+    datos = {"topic": NTFY_TEMA, "title": titulo, "message": mensaje,
+             "tags": tags, "priority": prioridad, "click": url}
+    for intento in range(3):
+        try:
+            requests.post(NTFY_SERVIDOR, json=datos, timeout=30).raise_for_status()
+            return
+        except requests.RequestException as e:
+            print(f"  ntfy falló ({e})", file=sys.stderr)
+            time.sleep(5 * (intento + 1))
+
+
+def avisar_ntfy(eventos: list[tuple[str, dict]], primera_vez: bool) -> None:
+    if not eventos:
+        return
+    if not NTFY_TEMA:
+        print("NTFY_TEMA no configurado: no se envían notificaciones.")
+        return
+    if primera_vez or len(eventos) > MAX_AVISOS_SUELTOS:
+        cuerpo = "\n\n".join(f"{AVISO[t][0]}\n{texto_curso(c)}" for t, c in eventos)
+        titulo = "Cursos MOC disponibles" if primera_vez else f"{len(eventos)} avisos de cursos MOC"
+        enviar_ntfy(titulo, cuerpo[:3900], ["books"], 4, LISTADO)
+    else:
+        for t, c in eventos:
+            titulo, tag, prioridad = AVISO[t]
+            enviar_ntfy(titulo, texto_curso(c), [tag], prioridad, c["url"])
+    print(f"Enviados {len(eventos)} avisos a ntfy.")
+
+
 def main() -> int:
     print(f"Consultando {LISTADO} ({HOY.isoformat()})…")
     actividades = obtener_todos()
@@ -154,23 +237,22 @@ def main() -> int:
     primera_vez = not estado
     ahora = datetime.now(ZoneInfo("Europe/Madrid")).isoformat(timespec="seconds")
 
-    nuevos, abiertos_ahora = [], []
+    eventos: list[tuple[str, dict]] = []  # (tipo, curso)
     actuales = set()
     for c in filter(es_moc, actividades):
         c["estado"] = estado_inscripcion(c["inscripcion_inicio"], c["inscripcion_fin"])
-        previo = estado.get(c["url"])
+        previo = estado.get(c["url"]) or {}
         actuales.add(c["url"])
-        if previo is None:
-            c["visto_por_primera_vez"] = ahora
-            c["aviso_apertura"] = c["estado"] == "abierto"
-            if c["estado"] != "cerrado":
-                nuevos.append(c)
-        else:
-            c["visto_por_primera_vez"] = previo.get("visto_por_primera_vez", ahora)
-            c["aviso_apertura"] = previo.get("aviso_apertura", False)
-            if c["estado"] == "abierto" and not c["aviso_apertura"]:
-                c["aviso_apertura"] = True
-                abiertos_ahora.append(c)
+        c["visto_por_primera_vez"] = previo.get("visto_por_primera_vez", ahora)
+        avisos = set(previo.get("avisos", []))
+        if previo.get("aviso_apertura"):  # compatibilidad con la versión anterior
+            avisos.add("abierto")
+        for tipo in tipos_de_aviso(c, es_nuevo=not previo):
+            if tipo not in avisos:
+                eventos.append((tipo, c))
+        # Un curso nuevo ya cubre los avisos de "pronto"/"abierto" que le correspondan hoy.
+        avisos.update(tipos_de_aviso(c, es_nuevo=not previo))
+        c["avisos"] = sorted(avisos)
         c["ultima_vez_visto"] = ahora
         c["en_listado"] = True
         estado[c["url"]] = c
@@ -195,9 +277,16 @@ def main() -> int:
         "utf-8",
     )
 
-    print(f"{len(actividades)} actividades, {len(actuales)} MOC, "
-          f"{len(nuevos)} nuevos, {len(abiertos_ahora)} abren inscripción.")
+    # Si un curso es nuevo, no mandamos además "pronto"/"abierto" en la misma ejecución.
+    nuevos_urls = {c["url"] for t, c in eventos if t == "nuevo"}
+    eventos = [(t, c) for t, c in eventos if t == "nuevo" or c["url"] not in nuevos_urls]
+    por_tipo = {t: [c for tt, c in eventos if tt == t] for t in TIPOS}
+    print(f"{len(actividades)} actividades, {len(actuales)} MOC; avisos: "
+          + ", ".join(f"{t}={len(v)}" for t, v in por_tipo.items()))
 
+    avisar_ntfy(eventos, primera_vez)
+
+    nuevos, abiertos_ahora = por_tipo["nuevo"], por_tipo["abierto"]
     if nuevos or abiertos_ahora:
         partes = []
         if primera_vez:

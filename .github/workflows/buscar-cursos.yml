@@ -28,6 +28,10 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Buscar cursos MOC
+        env:
+          NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
+          AVISO_DIAS_ANTES: ${{ vars.AVISO_DIAS_ANTES || '3' }}
+          AVISO_DIAS_CIERRE: ${{ vars.AVISO_DIAS_CIERRE || '2' }}
         run: python buscar_cursos.py
 
       - name: Guardar estado

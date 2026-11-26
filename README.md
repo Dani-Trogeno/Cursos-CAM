@@ -20,6 +20,32 @@ y avisa cuando aparecen **cursos MOC** (en línea, no tutorizados) en los que te
 GitHub te envía un correo por cada issue nuevo (si sigues el repositorio: *Watch → All activity*
 o al menos *Issues*).
 
+## Avisos al móvil con ntfy
+
+Además de los issues, envía notificaciones push con [ntfy](https://ntfy.sh):
+
+| Aviso | Cuándo |
+|---|---|
+| 🆕 Nuevo curso MOC | En cuanto aparece en la web |
+| ⏰ Abre pronto la inscripción | 3 días antes de que empiece el plazo |
+| ✅ Inscripción abierta | El día que se abre el plazo |
+| ⚠️ Último aviso | 2 días antes de que cierre el plazo |
+
+Al pulsar la notificación se abre la ficha del curso.
+
+### Configuración
+
+1. Instala la app **ntfy** ([Android](https://play.google.com/store/apps/details?id=io.heckel.ntfy) /
+   [iPhone](https://apps.apple.com/app/ntfy/id1625396347)).
+2. Inventa un nombre de tema difícil de adivinar (cualquiera que lo conozca puede leer los avisos),
+   por ejemplo `cursos-moc-7f3k9q2x`, y suscríbete a él en la app (servidor `ntfy.sh`).
+3. En GitHub: *Settings → Secrets and variables → Actions → New repository secret*,
+   nombre **`NTFY_TEMA`**, valor: el nombre del tema.
+4. Opcional, en la pestaña *Variables* de esa misma página:
+   `AVISO_DIAS_ANTES` (por defecto 3) y `AVISO_DIAS_CIERRE` (por defecto 2).
+
+Si hay muchos avisos a la vez (por ejemplo, la primera ejecución) se envía una sola notificación resumen.
+
 ## Ejecutar en local
 
 ```bash
