@@ -227,7 +227,32 @@ def avisar_ntfy(eventos: list[tuple[str, dict]], primera_vez: bool) -> None:
     print(f"Enviados {len(eventos)} avisos a ntfy.")
 
 
+def toca_ejecutar() -> bool:
+    """Con HORA_EJECUCION definida (ejecución programada), decide si toca hoy.
+
+    GitHub programa en UTC, así que el workflow se lanza a dos horas UTC para
+    cubrir horario de invierno y de verano; aquí se descarta la que no toca.
+    """
+    hora = os.environ.get("HORA_EJECUCION", "").strip()
+    if not hora:
+        return True
+    ahora = datetime.now(ZoneInfo("Europe/Madrid"))
+    if ahora.hour < int(hora):
+        print(f"Son las {ahora:%H:%M} en Madrid: todavía no son las {hora}:00, no se ejecuta.")
+        return False
+    if RESUMEN.exists():
+        m = re.search(r"Actualizado: (\d{4}-\d{2}-\d{2})T(\d{2})", RESUMEN.read_text("utf-8"))
+        if m and m.group(1) == ahora.date().isoformat() and int(m.group(2)) >= int(hora):
+            print("Ya se ha ejecutado hoy a partir de la hora programada.")
+            return False
+    return True
+
+
 def main() -> int:
+    if not toca_ejecutar():
+        if NUEVOS.exists():
+            NUEVOS.unlink()
+        return 0
     print(f"Consultando {LISTADO} ({HOY.isoformat()})…")
     actividades = obtener_todos()
     if not actividades:

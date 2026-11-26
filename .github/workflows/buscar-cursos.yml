@@ -2,8 +2,10 @@ name: Buscar cursos MOC
 
 on:
   schedule:
-    # Todos los días a las 06:47 UTC (07:47 en invierno / 08:47 en verano, hora de Madrid)
-    - cron: "47 6 * * *"
+    # Todos los días a las 11:00 hora de Madrid. GitHub usa UTC, así que se lanza
+    # a las 09:00 y 10:00 UTC y el script descarta la que no corresponde
+    # (invierno: 10:00 UTC = 11:00 Madrid; verano: 09:00 UTC = 11:00 Madrid).
+    - cron: "0 9,10 * * *"
   workflow_dispatch:
     inputs:
       prueba:
@@ -44,6 +46,7 @@ jobs:
           NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
           AVISO_DIAS_ANTES: ${{ vars.AVISO_DIAS_ANTES || '3' }}
           AVISO_DIAS_CIERRE: ${{ vars.AVISO_DIAS_CIERRE || '2' }}
+          HORA_EJECUCION: ${{ github.event_name == 'schedule' && '11' || '' }}
         run: python buscar_cursos.py
 
       - name: Guardar estado

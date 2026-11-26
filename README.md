@@ -8,7 +8,7 @@ y avisa cuando aparecen **cursos MOC** (en línea, no tutorizados) en los que te
 
 ## Cómo funciona
 
-1. El workflow [`buscar-cursos.yml`](.github/workflows/buscar-cursos.yml) se ejecuta todos los días
+1. El workflow [`buscar-cursos.yml`](.github/workflows/buscar-cursos.yml) se ejecuta todos los días a las 11:00
    (y a mano desde *Actions → Buscar cursos MOC → Run workflow*).
 2. [`buscar_cursos.py`](buscar_cursos.py) recorre todas las páginas del buscador y se queda con las
    actividades cuyo título empieza por **MOC/MOOC** o cuya modalidad es **«En línea, no tutorizado»**.
@@ -55,5 +55,6 @@ python buscar_cursos.py
 
 ## Ajustes
 
-- **Hora**: cambia el `cron` del workflow (está en UTC).
+- **Hora**: se ejecuta a las 11:00 (hora de Madrid). Para cambiarla, edita el `cron` del workflow
+  (en UTC: la hora de Madrid menos 1 y menos 2) y el valor de `HORA_EJECUCION`.
 - **Qué cuenta como MOC**: función `es_moc()` en `buscar_cursos.py`.
