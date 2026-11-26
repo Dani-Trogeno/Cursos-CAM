@@ -31,6 +31,7 @@ RAIZ = Path(__file__).resolve().parent
 ESTADO = RAIZ / "data" / "cursos_moc.json"
 RESUMEN = RAIZ / "CURSOS.md"
 NUEVOS = RAIZ / "nuevos.md"
+SOLICITUDES = RAIZ / "solicitudes.json"  # cursos para los que abrir un issue de confirmación
 
 MAX_PAGINAS = 100
 PAUSA = 1.0  # segundos entre peticiones, para no sobrecargar la web
@@ -270,6 +271,8 @@ def main() -> int:
         previo = estado.get(c["url"]) or {}
         actuales.add(c["url"])
         c["visto_por_primera_vez"] = previo.get("visto_por_primera_vez", ahora)
+        if previo.get("solicitud_inscripcion"):
+            c["solicitud_inscripcion"] = previo["solicitud_inscripcion"]
         avisos = set(previo.get("avisos", []))
         if previo.get("aviso_apertura"):  # compatibilidad con la versión anterior
             avisos.add("abierto")
@@ -287,6 +290,18 @@ def main() -> int:
         if url not in actuales:
             c["en_listado"] = False
             c["estado"] = estado_inscripcion(c.get("inscripcion_inicio"), c.get("inscripcion_fin"))
+
+    # Cursos con el plazo abierto para los que aún no se ha pedido confirmación de inscripción.
+    solicitudes = [c for c in estado.values()
+                   if c.get("en_listado") and c["estado"] == "abierto" and not c.get("solicitud_inscripcion")]
+    for c in solicitudes:
+        c["solicitud_inscripcion"] = ahora
+    if solicitudes:
+        SOLICITUDES.write_text(json.dumps(
+            [{"url": c["url"], "titulo": c["titulo"], "cuerpo": cuerpo_solicitud(c)} for c in solicitudes],
+            ensure_ascii=False, indent=2), "utf-8")
+    elif SOLICITUDES.exists():
+        SOLICITUDES.unlink()
 
     ESTADO.parent.mkdir(exist_ok=True)
     ESTADO.write_text(json.dumps(dict(sorted(estado.items())), ensure_ascii=False, indent=2) + "\n", "utf-8")
@@ -328,6 +343,117 @@ def main() -> int:
         NUEVOS.write_text("\n".join(partes), "utf-8")
     elif NUEVOS.exists():
         NUEVOS.unlink()
+    return 0
+
+
+# ----------------------------------------------------------- inscripción ----
+
+def cuerpo_solicitud(c: dict) -> str:
+    return (
+        f"## {c['titulo']}\n\n"
+        f"- **Plazo de inscripción:** {c.get('inscripcion_inicio') or '?'} – {c.get('inscripcion_fin') or '?'}\n"
+        f"- **Duración del curso:** {c.get('curso_inicio') or '?'} – {c.get('curso_fin') or '?'}\n"
+        f"- **Área:** {c.get('area') or '?'}\n"
+        f"- **Centro organizador:** {c.get('centro') or '?'}\n"
+        f"- **Ficha:** {c['url']}\n\n"
+        f"> {c.get('descripcion', '')}\n\n"
+        "### ¿Inscribir a la cuenta de prueba?\n\n"
+        "Para confirmar, **pon la etiqueta `inscribir`** a este issue o **escribe un comentario "
+        "que diga `inscribir`**. Si no te interesa, ciérralo sin más.\n\n"
+        f"<!-- curso: {c['url']} -->\n"
+    )
+
+
+def inscripciones_actuales(sesion: requests.Session) -> str:
+    r = sesion.get(f"{BASE}/usuario/inscripciones", timeout=60)
+    main = BeautifulSoup(r.text, "html.parser").select_one("main") 
+    return " ".join((main.get_text(" ", strip=True) if main else r.text).split()).lower()
+
+
+def inscribir(url_curso: str) -> tuple[bool, str]:
+    """Inicia sesión y pulsa «Inscribirme» en el curso indicado."""
+    if not url_curso.startswith(BASE + "/actividades/"):
+        return False, f"URL de curso no válida: {url_curso}"
+    sesion = requests.Session()
+    sesion.headers["User-Agent"] = "Mozilla/5.0 (compatible; cursos-cam-monitor/1.0)"
+    ok, mensaje = iniciar_sesion(sesion)
+    if not ok:
+        return False, mensaje
+    try:
+        r = sesion.get(url_curso, timeout=60)
+        r.raise_for_status()
+        ficha = BeautifulSoup(r.text, "html.parser")
+        titulo = " ".join(ficha.select_one("h1").get_text(" ", strip=True).split()) if ficha.select_one("h1") else url_curso
+        enlace = ficha.select_one('a[href*="inscripcion_af"]')
+        if not enlace:
+            return False, (f"La ficha de «{titulo}» no tiene botón de inscripción "
+                           "(¿plazo cerrado o ya inscrito?).")
+        url_form = requests.compat.urljoin(BASE, enlace["href"])
+        m = re.search(r"courseId=(\d+)", url_form)
+        course_id = m.group(1) if m else None
+
+        r = sesion.get(url_form, timeout=60)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "html.parser")
+        form = soup.select_one("form#node-inscripcion-af-form") or soup.select_one("form[id*=inscripcion]")
+        if not form:
+            avisos = [" ".join(e.get_text(" ", strip=True).split()) for e in soup.select(".alert, .messages")]
+            return False, f"No aparece el formulario de inscripción. {' / '.join(avisos)[:300]}"
+        boton = form.select_one('button[name="op"], input[type=submit][name="op"]')
+        if not boton:
+            return False, "El formulario no tiene botón «Inscribirme»."
+        datos = {i["name"]: i.get("value", "") for i in form.select("input[name]")
+                 if i.get("type") not in ("submit", "button", "checkbox", "radio")}
+        for i in form.select("input[type=checkbox][name][checked], input[type=radio][name][checked]"):
+            datos[i["name"]] = i.get("value", "1")
+        datos["op"] = boton.get("value") or boton.get_text(strip=True)
+        r = sesion.post(requests.compat.urljoin(url_form, form.get("action") or url_form), data=datos, timeout=60)
+        soup = BeautifulSoup(r.text, "html.parser")
+        errores = [" ".join(e.get_text(" ", strip=True).split()).removeprefix("× ")
+                   for e in soup.select(".alert-danger, .messages--error, .form-item--error-message")]
+        estados = [" ".join(e.get_text(" ", strip=True).split()).removeprefix("× ")
+                   for e in soup.select(".alert-success, .messages--status")]
+        if errores:
+            return False, f"La web devolvió un error al inscribir en «{titulo}»: {' / '.join(errores)[:400]}"
+
+        lista = inscripciones_actuales(sesion)
+        confirmado = titulo.lower() in lista or (course_id and course_id in lista)
+        detalle = f" Mensaje de la web: {' / '.join(estados)[:300]}" if estados else ""
+        if confirmado:
+            return True, f"Inscripción realizada en «{titulo}» y confirmada en «Mis inscripciones».{detalle}"
+        if estados:
+            return True, (f"Inscripción enviada en «{titulo}», pero no la he encontrado en «Mis inscripciones»; "
+                          f"revísalo en la web.{detalle}")
+        return False, (f"Se pulsó «Inscribirme» en «{titulo}» (HTTP {r.status_code}) pero no hay confirmación. "
+                       "Revisa «Mis inscripciones» en la web.")
+    finally:
+        sesion.get(f"{BASE}/user/logout", timeout=60)
+
+
+def inscribir_desde_issue() -> int:
+    """Lo usa el workflow de confirmación: lee la URL del curso del cuerpo del issue."""
+    cuerpo = os.environ.get("ISSUE_BODY", "")
+    m = re.search(r"<!-- curso: (\S+) -->", cuerpo)
+    if not m:
+        print("No encuentro la URL del curso en el issue.")
+        Path("resultado.md").write_text("❌ No encuentro la URL del curso en este issue.", "utf-8")
+        return 1
+    ok, mensaje = inscribir(m.group(1))
+    print(mensaje)
+    Path("resultado.md").write_text(("✅ " if ok else "❌ ") + mensaje + "\n", "utf-8")
+    if NTFY_TEMA:
+        enviar_ntfy("✅ Inscrito en curso MOC" if ok else "❌ No se pudo inscribir", mensaje,
+                    ["white_check_mark" if ok else "x"], 4, os.environ.get("ISSUE_URL") or m.group(1))
+    return 0 if ok else 1
+
+
+def avisar_solicitud() -> int:
+    """Tras crear el issue de confirmación, avisa por ntfy con enlace al issue."""
+    titulo, url = sys.argv[sys.argv.index("--avisar-solicitud") + 1:][:2]
+    if NTFY_TEMA:
+        enviar_ntfy("📝 ¿Inscribir en este curso MOC?",
+                    f"{titulo}\n\nAbre el issue y ponle la etiqueta «inscribir» o comenta «inscribir».",
+                    ["memo"], 4, url)
     return 0
 
 
@@ -457,6 +583,10 @@ def prueba_ntfy() -> int:
 
 
 if __name__ == "__main__":
+    if "--inscribir-desde-issue" in sys.argv:
+        sys.exit(inscribir_desde_issue())
+    if "--avisar-solicitud" in sys.argv:
+        sys.exit(avisar_solicitud())
     if "--diagnostico" in sys.argv:
         sys.exit(diagnostico_inscripcion())
     if "--login" in sys.argv:

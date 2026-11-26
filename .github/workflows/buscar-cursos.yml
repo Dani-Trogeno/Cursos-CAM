@@ -77,6 +77,27 @@ jobs:
             git push
           fi
 
+      - name: Pedir confirmación de inscripción (un issue por curso)
+        if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('solicitudes.json') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
+        run: |
+          gh label create solicitud-inscripcion --color fbca04 --description "Pendiente de confirmar inscripción" 2>/dev/null || true
+          gh label create inscribir --color 0e8a16 --description "Confirma la inscripción en el curso" 2>/dev/null || true
+          gh label create inscrito --color 5319e7 --description "Inscripción realizada" 2>/dev/null || true
+          n=$(python -c "import json;print(len(json.load(open('solicitudes.json'))))")
+          for i in $(seq 0 $((n-1))); do
+            titulo=$(python -c "import json,sys;print(json.load(open('solicitudes.json'))[$i]['titulo'])")
+            python -c "import json;print(json.load(open('solicitudes.json'))[$i]['cuerpo'])" > cuerpo.md
+            url=$(gh issue create --title "📝 ¿Inscribir en: $titulo?" --body-file cuerpo.md \
+                    --label solicitud-inscripcion --assignee "${{ github.repository_owner }}" \
+                  || gh issue create --title "📝 ¿Inscribir en: $titulo?" --body-file cuerpo.md \
+                    --label solicitud-inscripcion)
+            echo "Creado $url"
+            python buscar_cursos.py --avisar-solicitud "$titulo" "$url"
+          done
+
       - name: Avisar de cursos nuevos (issue)
         if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('nuevos.md') != '' }}
         env:

@@ -58,3 +58,16 @@ python buscar_cursos.py
 - **Hora**: se ejecuta a las 11:00 (hora de Madrid). Para cambiarla, edita el `cron` del workflow
   (en UTC: la hora de Madrid menos 1 y menos 2) y el valor de `HORA_EJECUCION`.
 - **Qué cuenta como MOC**: función `es_moc()` en `buscar_cursos.py`.
+
+## Inscripción automática (con confirmación)
+
+Con los secretos **`CAM_USUARIO`** y **`CAM_PASSWORD`** (cuenta de prueba), el sistema puede inscribirse en los MOC:
+
+1. Cuando se abre el plazo de inscripción de un MOC, se crea un issue **«📝 ¿Inscribir en: …?»**
+   (etiqueta `solicitud-inscripcion`) y llega un aviso por ntfy que abre ese issue.
+2. Para confirmar, **pon la etiqueta `inscribir`** al issue o **comenta `inscribir`** (solo cuenta el dueño del repositorio).
+3. El workflow [`inscribir.yml`](.github/workflows/inscribir.yml) inicia sesión, pulsa «Inscribirme»,
+   comprueba que el curso aparece en «Mis inscripciones», comenta el resultado, cierra el issue
+   (etiqueta `inscrito`) y avisa por ntfy.
+
+Si no te interesa un curso, cierra el issue sin más. Las bajas de un curso se hacen a mano en la web.
