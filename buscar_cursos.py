@@ -331,6 +331,61 @@ def main() -> int:
     return 0
 
 
+# ----------------------------------------------------------------- login ----
+
+def iniciar_sesion(sesion: requests.Session) -> tuple[bool, str]:
+    """Inicia sesión en la web con CAM_USUARIO / CAM_PASSWORD (secretos de GitHub)."""
+    usuario, clave = os.environ.get("CAM_USUARIO", ""), os.environ.get("CAM_PASSWORD", "")
+    if not usuario or not clave:
+        return False, "Faltan los secretos CAM_USUARIO y/o CAM_PASSWORD."
+    r = sesion.get(f"{BASE}/user/login", timeout=60)
+    r.raise_for_status()
+    form = BeautifulSoup(r.text, "html.parser").select_one("form#user-login-form")
+    if not form:
+        return False, "No se encuentra el formulario de login (¿ha cambiado la web?)."
+    datos = {i["name"]: i.get("value", "") for i in form.select("input[type=hidden][name]")}
+    datos.update({"name": usuario, "pass": clave, "op": "Iniciar sesión"})
+    r = sesion.post(f"{BASE}/user/login", data=datos, timeout=60)
+    soup = BeautifulSoup(r.text, "html.parser")
+    if soup.select_one('a[href*="/user/logout"]') or "user/login" not in r.url and "/user/" in r.url:
+        return True, "Sesión iniciada correctamente."
+    errores = [" ".join(e.get_text(" ", strip=True).split()).removeprefix("× ")
+               for e in soup.select(".form-item--error-message, .messages--error")]
+    motivo = " / ".join(errores) or "motivo desconocido"
+    return False, f"No se pudo iniciar sesión: {motivo[:300]}"
+
+
+def prueba_login() -> int:
+    sesion = requests.Session()
+    sesion.headers["User-Agent"] = "Mozilla/5.0 (compatible; cursos-cam-monitor/1.0)"
+    ok, mensaje = iniciar_sesion(sesion)
+    print(mensaje)
+    if not ok:
+        return 1
+    # Solo lectura: abre (sin enviar) el formulario de inscripción de un curso MOC vigente.
+    estado = json.loads(ESTADO.read_text("utf-8")) if ESTADO.exists() else {}
+    for c in estado.values():
+        if not c.get("en_listado") or c.get("estado") not in ("abierto", "próximo"):
+            continue
+        r = sesion.get(c["url"], timeout=60)
+        enlace = BeautifulSoup(r.text, "html.parser").select_one('a[href*="inscripcion_af"]')
+        if not enlace:
+            continue
+        r = sesion.get(requests.compat.urljoin(BASE, enlace["href"]), timeout=60)
+        soup = BeautifulSoup(r.text, "html.parser")
+        titulo = soup.title.get_text(strip=True) if soup.title else "?"
+        formulario = soup.select_one("form[id*=inscripcion]")
+        print(f"Formulario de inscripción de «{c['titulo']}»: HTTP {r.status_code}, "
+              f"página «{titulo}», formulario {'encontrado' if formulario else 'NO encontrado'}.")
+        if formulario:
+            campos = sorted({i.get("name") for i in formulario.select("input,select,textarea") if i.get("name")})
+            print("Campos del formulario:", ", ".join(campos))
+        break
+    sesion.get(f"{BASE}/user/logout", timeout=60)
+    print("Sesión cerrada.")
+    return 0
+
+
 def prueba_ntfy() -> int:
     if not NTFY_TEMA:
         print("Falta el secreto NTFY_TEMA.", file=sys.stderr)
@@ -342,4 +397,6 @@ def prueba_ntfy() -> int:
 
 
 if __name__ == "__main__":
+    if "--login" in sys.argv:
+        sys.exit(prueba_login())
     sys.exit(prueba_ntfy() if "--prueba" in sys.argv else main())

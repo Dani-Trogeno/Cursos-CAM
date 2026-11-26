@@ -12,6 +12,10 @@ on:
         description: "Solo enviar una notificación de prueba a ntfy"
         type: boolean
         default: false
+      probar_login:
+        description: "Solo comprobar el inicio de sesión con la cuenta de prueba"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -40,8 +44,15 @@ jobs:
           NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
         run: python buscar_cursos.py --prueba
 
+      - name: Comprobar inicio de sesión
+        if: inputs.probar_login
+        env:
+          CAM_USUARIO: ${{ secrets.CAM_USUARIO }}
+          CAM_PASSWORD: ${{ secrets.CAM_PASSWORD }}
+        run: python buscar_cursos.py --login
+
       - name: Buscar cursos MOC
-        if: ${{ !inputs.prueba }}
+        if: ${{ !inputs.prueba && !inputs.probar_login }}
         env:
           NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
           AVISO_DIAS_ANTES: ${{ vars.AVISO_DIAS_ANTES || '3' }}
@@ -50,7 +61,7 @@ jobs:
         run: python buscar_cursos.py
 
       - name: Guardar estado
-        if: ${{ !inputs.prueba }}
+        if: ${{ !inputs.prueba && !inputs.probar_login }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -63,7 +74,7 @@ jobs:
           fi
 
       - name: Avisar de cursos nuevos (issue)
-        if: ${{ !inputs.prueba && hashFiles('nuevos.md') != '' }}
+        if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('nuevos.md') != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
