@@ -64,7 +64,21 @@ python buscar_cursos.py
   (en UTC: la hora de Madrid menos 1 y menos 2) y el valor de `HORA_EJECUCION`.
 - **Qué cuenta como MOC**: función `es_moc()` en `buscar_cursos.py`.
 
-## Inscripción automática (con confirmación)
+## Inscripción automática
+
+Cada MOC se valora frente al perfil de la cuenta de prueba ([`perfil.json`](perfil.json): profesor de
+Secundaria de Matemáticas, tutor, sin cargo directivo) y su formato:
+
+| Encaja | Cuándo | Qué hace el sistema |
+|---|---|---|
+| 🟢 **Sí** | Formato ✅ y la ficha no pone restricciones al perfil | **Se inscribe automáticamente** al abrir el plazo, avisa por ntfy y deja un issue cerrado (`inscripcion-automatica`) como registro |
+| 🟡 **Posible** | Formato ⚠️, prioridad para otros colectivos o contenido de otra etapa | Pide confirmación con un issue (ver abajo) |
+| 🔴 **No** | Formato ❌ o la ficha lo restringe (Cuerpo de Maestros, equipos directivos, coordinadores…) | Nada |
+
+Para desactivar la inscripción automática: *Settings → Secrets and variables → Actions → Variables*,
+crea `INSCRIPCION_AUTOMATICA` = `false` (entonces todo pasa por confirmación).
+
+### Inscripción con confirmación
 
 Con los secretos **`CAM_USUARIO`** y **`CAM_PASSWORD`** (cuenta de prueba), el sistema puede inscribirse en los MOC:
 

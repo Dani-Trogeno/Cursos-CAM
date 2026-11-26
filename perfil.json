@@ -1,0 +1,10 @@
+{
+  "descripcion": "Perfil de la cuenta de prueba. Se usa para decidir si un MOC «encaja» y se puede inscribir automáticamente.",
+  "cuerpo": "secundaria",
+  "especialidad": "Matemáticas",
+  "etapas": ["ESO", "Bachillerato"],
+  "tutor": true,
+  "equipo_directivo": false,
+  "coordinador_programas": false,
+  "orientador": false
+}

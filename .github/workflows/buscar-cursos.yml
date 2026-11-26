@@ -62,6 +62,11 @@ jobs:
           AVISO_DIAS_ANTES: ${{ vars.AVISO_DIAS_ANTES || '3' }}
           AVISO_DIAS_CIERRE: ${{ vars.AVISO_DIAS_CIERRE || '2' }}
           HORA_EJECUCION: ${{ github.event_name == 'schedule' && '11' || '' }}
+          # Inscripción automática en los MOC que encajan (formato ✅ + perfil ✅).
+          # Para desactivarla: variable de repositorio INSCRIPCION_AUTOMATICA = false
+          INSCRIPCION_AUTOMATICA: ${{ vars.INSCRIPCION_AUTOMATICA || 'true' }}
+          CAM_USUARIO: ${{ secrets.CAM_USUARIO }}
+          CAM_PASSWORD: ${{ secrets.CAM_PASSWORD }}
         run: python buscar_cursos.py
 
       - name: Guardar estado
@@ -76,6 +81,23 @@ jobs:
             git commit -m "Actualizar cursos MOC ($(date -u +%F))"
             git push
           fi
+
+      - name: Registrar inscripciones automáticas (issue cerrado por curso)
+        if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('inscritos.json') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create inscrito --color 5319e7 --description "Inscripción realizada" 2>/dev/null || true
+          gh label create inscripcion-automatica --color c2e0c6 --description "Inscrito automáticamente" 2>/dev/null || true
+          n=$(python -c "import json;print(len(json.load(open('inscritos.json'))))")
+          for i in $(seq 0 $((n-1))); do
+            titulo=$(python -c "import json;print(json.load(open('inscritos.json'))[$i]['titulo'])")
+            python -c "import json;print(json.load(open('inscritos.json'))[$i]['cuerpo'])" > cuerpo.md
+            url=$(gh issue create --title "✅ Inscrito automáticamente: $titulo" --body-file cuerpo.md \
+                    --label inscrito --label inscripcion-automatica)
+            gh issue close "$url" --reason completed
+            echo "Registrado $url"
+          done
 
       - name: Pedir confirmación de inscripción (un issue por curso)
         if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('solicitudes.json') != '' }}

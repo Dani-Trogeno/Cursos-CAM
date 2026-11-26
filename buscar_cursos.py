@@ -32,6 +32,7 @@ ESTADO = RAIZ / "data" / "cursos_moc.json"
 RESUMEN = RAIZ / "CURSOS.md"
 NUEVOS = RAIZ / "nuevos.md"
 SOLICITUDES = RAIZ / "solicitudes.json"  # cursos para los que abrir un issue de confirmación
+INSCRITOS = RAIZ / "inscritos.json"      # inscripciones automáticas hechas en esta ejecución
 
 MAX_PAGINAS = 100
 PAUSA = 1.0  # segundos entre peticiones, para no sobrecargar la web
@@ -63,16 +64,7 @@ RE_CUESTIONARIOS = re.compile(r"cuestionario|autoevaluaci|\btest\b", re.I)
 
 def analizar_ficha(html: str) -> dict:
     """Clasifica el formato del curso: 'apto', 'dudoso' o 'no apto' (con motivos)."""
-    main = BeautifulSoup(html, "html.parser").select_one("main")
-    lineas = (main.get_text("\n", strip=True) if main else "").split("\n")
-    # Fuera la sección de competencia digital: cita "videoconferencia" como competencia, no como requisito.
-    if "Competencia digital docente" in lineas:
-        ini = lineas.index("Competencia digital docente")
-        fin = next((j for j in range(ini + 1, len(lineas))
-                    if lineas[j] in ("Metodología", "Evaluación", "Observaciones")), len(lineas))
-        lineas = lineas[:ini] + lineas[fin:]
-    texto = " ".join(" ".join(lineas).split())
-    frases = [f for f in re.split(r"(?<=[.;:])\s+", texto) if "etiqueta digital" not in f.lower()]
+    lineas, frases = frases_ficha(html)
     motivos, nivel = [], "apto"
 
     def frase(rx):
@@ -103,6 +95,82 @@ def analizar_ficha(html: str) -> dict:
 
 
 ICONO_FORMATO = {"apto": "✅", "dudoso": "⚠️", "no apto": "❌"}
+ICONO_ENCAJA = {"sí": "🟢 Sí", "posible": "🟡 Posible", "no": "🔴 No"}
+
+PERFIL_FICHERO = RAIZ / "perfil.json"
+
+
+def cargar_perfil() -> dict:
+    try:
+        return json.loads(PERFIL_FICHERO.read_text("utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def frases_ficha(html: str) -> tuple[list[str], list[str]]:
+    """Líneas y frases del contenido de la ficha, sin la sección de competencia digital."""
+    main = BeautifulSoup(html, "html.parser").select_one("main")
+    lineas = (main.get_text("\n", strip=True) if main else "").split("\n")
+    if "Competencia digital docente" in lineas:
+        ini = lineas.index("Competencia digital docente")
+        fin = next((j for j in range(ini + 1, len(lineas))
+                    if lineas[j] in ("Metodología", "Evaluación", "Observaciones")), len(lineas))
+        lineas = lineas[:ini] + lineas[fin:]
+    texto = " ".join(" ".join(lineas).split())
+    return lineas, [f for f in re.split(r"(?<=[.;:])\s+", texto) if f]
+
+
+def evaluar_perfil(html: str, c: dict, perfil: dict) -> dict:
+    """¿Puede la cuenta (según perfil.json) inscribirse? -> 'sí' / 'posible' / 'no' con motivos."""
+    if not perfil:
+        return {"perfil": "posible", "perfil_motivos": ["No hay perfil configurado (perfil.json)."]}
+    _, frases = frases_ficha(html)
+    motivos_no, motivos_posible = [], []
+
+    def busca(patron):
+        """Devuelve el fragmento de la ficha (±90 caracteres) donde aparece el patrón."""
+        rx = re.compile(patron, re.I)
+        for f in frases:
+            if (m := rx.search(f)):
+                ini, fin = max(0, m.start() - 90), min(len(f), m.end() + 90)
+                return ("…" if ini else "") + f[ini:fin] + ("…" if fin < len(f) else "")
+        return None
+
+    if perfil.get("cuerpo") != "maestros" and (f := busca(
+            r"(destinad|dirigid|exclusiv)[^.]*cuerpo de maestros|funcionarios de carrera del cuerpo de maestros")):
+        motivos_no.append(f"Solo para el Cuerpo de Maestros: «{f[:180]}»")
+    if not perfil.get("equipo_directivo"):
+        if (f := busca(r"acreditar[^.]*equipo directivo|dirigid[ao] a docentes[^.]*equipos? directivos?")):
+            motivos_no.append(f"Solo para equipos directivos: «{f[:180]}»")
+        elif (f := busca(r"prioridad[^.]*equipos? directivos?")):
+            motivos_posible.append(f"Prioridad para equipos directivos: «{f[:180]}»")
+    if not perfil.get("coordinador_programas") and (f := busca(r"dirigid[ao] a coordinadores")):
+        motivos_no.append(f"Solo para coordinadores del programa: «{f[:180]}»")
+    if not perfil.get("tutor") and (f := busca(r"cargo de tutor|destinad[oa] a[^.]*tutores")):
+        motivos_posible.append(f"Pensado para tutores: «{f[:180]}»")
+    etapas = " ".join(perfil.get("etapas", [])).lower()
+    tema = f"{c.get('titulo', '')} {c.get('area', '')}"
+    for etapa, rx in (("Infantil", r"educaci[oó]n infantil|etapa (?:de )?infantil"),
+                      ("Primaria", r"educaci[oó]n primaria|etapa (?:de )?primaria")):
+        if etapa.lower() not in etapas and re.search(rx, tema, re.I) and not re.search(r"secundaria|eso\b|bachiller", tema, re.I):
+            motivos_posible.append(f"Contenido de Educación {etapa}, no de la etapa de la cuenta.")
+    if "fp" not in etapas and re.search(r"formaci[oó]n profesional espec[ií]fica", c.get("area", ""), re.I):
+        motivos_posible.append("Curso de Formación Profesional específica.")
+
+    if motivos_no:
+        return {"perfil": "no", "perfil_motivos": motivos_no + motivos_posible}
+    if motivos_posible:
+        return {"perfil": "posible", "perfil_motivos": motivos_posible}
+    return {"perfil": "sí", "perfil_motivos": []}
+
+
+def encaja(c: dict) -> str:
+    formato, perfil = c.get("formato"), c.get("perfil")
+    if formato == "no apto" or perfil == "no":
+        return "no"
+    if formato == "apto" and perfil == "sí":
+        return "sí"
+    return "posible"
 
 
 def parse_fecha(texto: str) -> date | None:
@@ -195,12 +263,12 @@ def fila(c: dict) -> str:
     dur = f"{c.get('curso_inicio') or '?'} – {c.get('curso_fin') or '?'}"
     titulo = c["titulo"].replace("|", "/")
     icono = ICONO_FORMATO.get(c.get("formato", ""), "")
-    return f"| {icono} [{titulo}]({c['url']}) | {c['estado']} | {ins} | {dur} | {c.get('area', '').replace('|', '/')} |"
+    return f"| {icono} [{titulo}]({c['url']}) | {ICONO_ENCAJA.get(c.get('encaja'), '?')} | {c['estado']} | {ins} | {dur} | {c.get('area', '').replace('|', '/')} |"
 
 
 CABECERA = (
-    "| Curso | Inscripción | Plazo de inscripción | Duración | Área |\n"
-    "|---|---|---|---|---|"
+    "| Curso | Encaja | Inscripción | Plazo de inscripción | Duración | Área |\n"
+    "|---|---|---|---|---|---|"
 )
 
 
@@ -328,21 +396,28 @@ def main() -> int:
 
     eventos: list[tuple[str, dict]] = []  # (tipo, curso)
     actuales = set()
+    perfil = cargar_perfil()
     sesion_fichas = requests.Session()
     sesion_fichas.headers["User-Agent"] = "Mozilla/5.0 (compatible; cursos-cam-monitor/1.0)"
     for c in filter(es_moc, actividades):
         c["estado"] = estado_inscripcion(c["inscripcion_inicio"], c["inscripcion_fin"])
         previo = estado.get(c["url"]) or {}
-        if "formato" in previo:
-            c["formato"], c["formato_motivos"] = previo["formato"], previo.get("formato_motivos", [])
-        else:
+        for campo in ("formato", "formato_motivos", "perfil", "perfil_motivos"):
+            if campo in previo:
+                c[campo] = previo[campo]
+        if "formato" not in c or "perfil" not in c:
             try:
                 r = sesion_fichas.get(c["url"], timeout=60)
                 r.raise_for_status()
                 c.update(analizar_ficha(r.text))
+                c.update(evaluar_perfil(r.text, c, perfil))
             except requests.RequestException as e:
-                c.update({"formato": "dudoso", "formato_motivos": [f"No se pudo leer la ficha ({e})."]})
+                c.update({"formato": "dudoso", "formato_motivos": [f"No se pudo leer la ficha ({e})."],
+                          "perfil": "posible", "perfil_motivos": []})
             time.sleep(PAUSA)
+        c["encaja"] = encaja(c)
+        if previo.get("inscripcion_auto"):
+            c["inscripcion_auto"] = previo["inscripcion_auto"]
         actuales.add(c["url"])
         c["visto_por_primera_vez"] = previo.get("visto_por_primera_vez", ahora)
         if previo.get("solicitud_inscripcion"):
@@ -371,6 +446,28 @@ def main() -> int:
                    and c.get("formato") != "no apto"]
     for c in solicitudes:
         c["solicitud_inscripcion"] = ahora
+
+    # Los que encajan (formato ✅ + perfil ✅) se inscriben solos; el resto pide confirmación.
+    inscritos = []
+    auto_activa = os.environ.get("INSCRIPCION_AUTOMATICA", "true").lower() not in ("false", "0", "no")
+    if auto_activa and os.environ.get("CAM_USUARIO") and os.environ.get("CAM_PASSWORD"):
+        for c in [c for c in solicitudes if c["encaja"] == "sí"]:
+            ok, mensaje = inscribir(c["url"])
+            print(("Inscrito: " if ok else "Fallo al inscribir: ") + mensaje)
+            c["inscripcion_auto"] = {"fecha": ahora, "ok": ok, "mensaje": mensaje}
+            if NTFY_TEMA:
+                enviar_ntfy("✅ Inscrito automáticamente" if ok else "❌ Falló la inscripción automática",
+                            mensaje if ok else f"{mensaje}\nTe pido confirmación en GitHub.",
+                            ["white_check_mark" if ok else "x"], 4, c["url"])
+            if ok:
+                inscritos.append(c)
+                solicitudes.remove(c)
+    if inscritos:
+        INSCRITOS.write_text(json.dumps(
+            [{"titulo": c["titulo"], "cuerpo": cuerpo_inscrito(c)} for c in inscritos],
+            ensure_ascii=False, indent=2), "utf-8")
+    elif INSCRITOS.exists():
+        INSCRITOS.unlink()
     if solicitudes:
         SOLICITUDES.write_text(json.dumps(
             [{"url": c["url"], "titulo": c["titulo"], "cuerpo": cuerpo_solicitud(c)} for c in solicitudes],
@@ -405,6 +502,8 @@ def main() -> int:
     print(f"{len(actividades)} actividades, {len(actuales)} MOC; avisos: "
           + ", ".join(f"{t}={len(v)}" for t, v in por_tipo.items()))
 
+    auto_ok = {c["url"] for c in inscritos}
+    eventos = [(t, c) for t, c in eventos if not (t == "abierto" and c["url"] in auto_ok)]
     avisar_ntfy(eventos, primera_vez)
 
     nuevos, abiertos_ahora = por_tipo["nuevo"], por_tipo["abierto"]
@@ -428,6 +527,29 @@ def main() -> int:
 
 # ----------------------------------------------------------- inscripción ----
 
+def bloque_encaje(c: dict) -> str:
+    lineas = [f"**¿Encaja con la cuenta de prueba?** {ICONO_ENCAJA.get(c.get('encaja'), '?')}",
+              f"- Formato: {ICONO_FORMATO.get(c.get('formato'), '?')} {c.get('formato', '?')}"]
+    lineas += [f"  - {m}" for m in c.get("formato_motivos", [])]
+    lineas.append(f"- Perfil: {c.get('perfil', '?')}")
+    lineas += [f"  - {m}" for m in c.get("perfil_motivos", [])]
+    if c.get("inscripcion_auto") and not c["inscripcion_auto"]["ok"]:
+        lineas.append(f"\n❌ La inscripción automática falló: {c['inscripcion_auto']['mensaje']}")
+    return "\n".join(lineas) + "\n\n"
+
+
+def cuerpo_inscrito(c: dict) -> str:
+    return (
+        f"## {c['titulo']}\n\n"
+        f"- **Plazo de inscripción:** {c.get('inscripcion_inicio') or '?'} – {c.get('inscripcion_fin') or '?'}\n"
+        f"- **Duración del curso:** {c.get('curso_inicio') or '?'} – {c.get('curso_fin') or '?'}\n"
+        f"- **Ficha:** {c['url']}\n\n"
+        + bloque_encaje(c)
+        + f"✅ **Inscripción automática:** {c['inscripcion_auto']['mensaje']}\n\n"
+        "Si no quieres este curso, date de baja en la web (Mi cuenta → Inscripciones).\n"
+    )
+
+
 def cuerpo_solicitud(c: dict) -> str:
     return (
         f"## {c['titulo']}\n\n"
@@ -437,10 +559,7 @@ def cuerpo_solicitud(c: dict) -> str:
         f"- **Centro organizador:** {c.get('centro') or '?'}\n"
         f"- **Ficha:** {c['url']}\n\n"
         f"> {c.get('descripcion', '')}\n\n"
-        + (f"### ⚠️ Revisa el formato antes de confirmar\n\n"
-           + "\n".join(f"- {m}" for m in c.get("formato_motivos", [])) + "\n\n"
-           if c.get("formato") == "dudoso" else
-           "**Formato:** ✅ solo vídeos/recursos y cuestionarios, sin sesiones síncronas.\n\n")
+        + bloque_encaje(c)
         + "### ¿Inscribir a la cuenta de prueba?\n\n"
         "Para confirmar, **pon la etiqueta `inscribir`** a este issue o **escribe un comentario "
         "que diga `inscribir`**. Si no te interesa, ciérralo sin más.\n\n"
