@@ -11,9 +11,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "La Consejería de Educación, Ciencia y Universidades de la Comunidad de Madrid, a través de las Direcciones Generales de Bilingüismo y Calidad de la Enseñanza; Educación Infantil, Primaria y Especial;...",
     "estado": "cerrado",
+    "formato": "no apto",
+    "formato_motivos": [
+      "Participación obligatoria en foros: «el proceso requiere la participación activa en los foros y la superación de los cuestionarios propuestos en los plazos establecidos.»"
+    ],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-guia-promocion-bienestar-emocional-materiales-accion-tutorial-0": {
@@ -28,11 +32,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "Esta actividad formativa trata de contribuir a la capacitación de tutores de la Etapa de Secundaria y profesionales de la orientación en la promoción del bienestar emocional y la salud psicológica...",
     "estado": "próximo",
+    "formato": "apto",
+    "formato_motivos": [],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-marco-normativo-gestion-administrativa-a0053": {
@@ -47,11 +53,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "La creciente complejidad en la gestión de los centros educativos exige equipos directivos capacitados no solo en aspectos organizativos, sino también en habilidades interpersonales, liderazgo...",
     "estado": "próximo",
+    "formato": "apto",
+    "formato_motivos": [],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-mentores-funcionarios-practicas-cuerpo-maestros-curso-26-27-2o-ed-a0043": {
@@ -66,9 +74,14 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "Actividad destinada a funcionarios de carrera del Cuerpo de Maestros de todas las especialidades que tengan una antigüedad de, al menos, cinco años como funcionarios de carrera en el cuerpo de...",
     "estado": "cerrado",
+    "formato": "no apto",
+    "formato_motivos": [
+      "Tiene 5 horas presenciales/síncronas.",
+      "Sesiones síncronas: «Esta formación de 30 horas comprende un curso en línea no tutorizado con una estructura modular y secuencial, y de dos webinars en directo de presencialidad telemática obligatoria con una duración de »"
+    ],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-paisaje-luz-otra-mirada-a0085": {
@@ -83,9 +96,11 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "Desde 2021, Madrid figura en la lista del Patrimonio Mundial de la UNESCO. La propuesta española, presentada en 2019 con el nombre de Paseo del Prado y el Buen Retiro, Paisaje de las Artes y las...",
     "estado": "cerrado",
+    "formato": "apto",
+    "formato_motivos": [],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-prevencion-riesgos-laborales-0": {
@@ -100,11 +115,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "Curso dirigido a docentes no universitarios pertenecientes a la Consejería de Educación, Ciencia y Universidades para la formación en la gestión de prevención de riesgos laborales y la capacitación...",
     "estado": "próximo",
+    "formato": "apto",
+    "formato_motivos": [],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-prevencion-riesgos-laborales-equipos-directivos": {
@@ -119,11 +136,15 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "Curso dirigido a docentes no universitarios pertenecientes a la Consejería de Educación, Ciencia y Universidades para la formación en la gestión de prevención de riesgos laborales y la capacitación...",
     "estado": "próximo",
+    "formato": "dudoso",
+    "formato_motivos": [
+      "Puede requerir tareas o valoración adicional: «El citado documento se aportará como tarea en un aula virtual.»"
+    ],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-proteccion-bienestar-infantil-adolescente-centros-educativos-nivel-inicial": {
@@ -138,11 +159,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "Hay conocimientos que debe tener todo el personal docente, independientemente de la etapa educativa en la que trabaje. Entre ellos encontramos el bienestar y la protección del alumnado, pilares...",
     "estado": "próximo",
+    "formato": "apto",
+    "formato_motivos": [],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-recursos-practicos-estimulacion-lenguaje-educacion-infantil-a0038": {
@@ -157,11 +180,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "Curso en línea cuyo eje central es la importancia del desarrollo del lenguaje en los primeros años de vida partiendo de la idea de que un desarrollo sólido es la base de todo aprendizaje futuro....",
     "estado": "próximo",
+    "formato": "apto",
+    "formato_motivos": [],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-sostenibilidad-internacionalizacion": {
@@ -176,11 +201,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "A partir de las directrices del Pacto Verde Europeo, el curso analiza el impacto de estas relaciones de interdependencia en la biodiversidad, la economía circular y la eficiencia de recursos....",
     "estado": "próximo",
+    "formato": "apto",
+    "formato_motivos": [],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-un-mundo-circular-economia-circular-futuro-curso-avanzado-a0096": {
@@ -195,9 +222,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "La Dirección General de Educación Secundaria, Formación Profesional y Régimen Especial en colaboración con la Dirección General de Transición Energética y Economía Circular y la Universidad Carlos...",
     "estado": "cerrado",
+    "formato": "dudoso",
+    "formato_motivos": [
+      "Puede requerir tareas o valoración adicional: «Evaluación Aprovechamiento positivo valorado por la organización.»"
+    ],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-un-mundo-circular-formacion-basica-a0094": {
@@ -212,9 +243,13 @@
     "centro": "ISMIE Instituto Superior Madrileño de Innovación Educativa",
     "descripcion": "Este curso parte de la intención de ofrecer a los docentes un espacio donde puedan descubrir la importancia que supone el paradigma de una nueva economía circular para la sociedad, y sus efectos en...",
     "estado": "cerrado",
+    "formato": "dudoso",
+    "formato_motivos": [
+      "Puede requerir tareas o valoración adicional: «Evaluación Aprovechamiento positivo valorado por la organización.»"
+    ],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/riesgos-emergencias-proteccion-civil-centros-educativos": {
@@ -229,13 +264,15 @@
     "centro": "Dirección General Bilingüismo y Calidad de la Enseñanza",
     "descripcion": "A raíz de las graves consecuencias provocadas en los últimos años por distintas catástrofes y situaciones de emergencia, como inundaciones, incendios forestales, temporales o episodios meteorológicos...",
     "estado": "abierto",
+    "formato": "apto",
+    "formato_motivos": [],
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
+    "solicitud_inscripcion": "2026-11-26T15:36:07+01:00",
     "avisos": [
       "abierto",
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:36:07+01:00",
-    "en_listado": true,
-    "solicitud_inscripcion": "2026-11-26T15:36:07+01:00"
+    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "en_listado": true
   }
 }
