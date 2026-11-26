@@ -197,16 +197,17 @@ def texto_curso(c: dict) -> str:
     return "\n".join(lineas)
 
 
-def enviar_ntfy(titulo: str, mensaje: str, tags: list[str], prioridad: int, url: str) -> None:
+def enviar_ntfy(titulo: str, mensaje: str, tags: list[str], prioridad: int, url: str) -> bool:
     datos = {"topic": NTFY_TEMA, "title": titulo, "message": mensaje,
              "tags": tags, "priority": prioridad, "click": url}
     for intento in range(3):
         try:
             requests.post(NTFY_SERVIDOR, json=datos, timeout=30).raise_for_status()
-            return
+            return True
         except requests.RequestException as e:
             print(f"  ntfy falló ({e})", file=sys.stderr)
             time.sleep(5 * (intento + 1))
+    return False
 
 
 def avisar_ntfy(eventos: list[tuple[str, dict]], primera_vez: bool) -> None:
@@ -305,5 +306,15 @@ def main() -> int:
     return 0
 
 
+def prueba_ntfy() -> int:
+    if not NTFY_TEMA:
+        print("Falta el secreto NTFY_TEMA.", file=sys.stderr)
+        return 1
+    print(f"Enviando prueba a {NTFY_SERVIDOR}/{NTFY_TEMA[:3]}… (tema de {len(NTFY_TEMA)} caracteres)")
+    ok = enviar_ntfy("🔔 Prueba de Cursos MOC", "Si ves esto, los avisos funcionan.", ["bell"], 4, LISTADO)
+    print("Prueba enviada correctamente." if ok else "No se pudo enviar la prueba.")
+    return 0 if ok else 1
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(prueba_ntfy() if "--prueba" in sys.argv else main())
