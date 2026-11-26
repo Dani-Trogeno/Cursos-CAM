@@ -386,6 +386,66 @@ def prueba_login() -> int:
     return 0
 
 
+def describir_formulario(html: str) -> None:
+    """Describe la estructura de los formularios de una página SIN mostrar valores."""
+    soup = BeautifulSoup(html, "html.parser")
+    for form in soup.select("form"):
+        print(f"\n=== form id={form.get('id')} action={form.get('action')} method={form.get('method')}")
+        for el in form.select("input, select, textarea, button"):
+            nombre, tipo = el.get("name"), el.get("type", el.name)
+            if tipo == "hidden" and nombre in ("form_build_id", "form_token"):
+                continue
+            etiqueta = ""
+            if el.get("id"):
+                lab = form.select_one(f'label[for="{el["id"]}"]')
+                etiqueta = " ".join(lab.get_text(" ", strip=True).split()) if lab else ""
+            extra = ""
+            if el.name == "select":
+                ops = [" ".join(o.get_text(" ", strip=True).split()) for o in el.select("option")]
+                extra = f" opciones={ops[:15]}"
+            if tipo in ("radio", "checkbox"):
+                extra = f" valor_opcion={el.get('value')!r}"
+            if el.name == "button" or tipo == "submit":
+                extra = f" texto={el.get_text(' ', strip=True) or el.get('value')!r}"
+            req = " OBLIGATORIO" if el.has_attr("required") else ""
+            dis = " DESACTIVADO" if el.has_attr("disabled") else ""
+            print(f"  - {el.name}[{tipo}] name={nombre!r} etiqueta={etiqueta!r}{extra}{req}{dis}")
+    main = soup.select_one("main") or soup
+    textos = [" ".join(t.get_text(" ", strip=True).split()) for t in main.select("h1, h2, h3, legend, .alert, .messages, .description")]
+    print("\nTextos de la página:", [t[:150] for t in textos if t][:30])
+    print("Scripts/ajax:", sorted({s.get("src", "")[:80] for s in soup.select("script[src]") if "ajax" in s.get("src", "") or "inscrip" in s.get("src", "")}))
+
+
+def diagnostico_inscripcion() -> int:
+    sesion = requests.Session()
+    sesion.headers["User-Agent"] = "Mozilla/5.0 (compatible; cursos-cam-monitor/1.0)"
+    ok, mensaje = iniciar_sesion(sesion)
+    print(mensaje)
+    if not ok:
+        return 1
+    try:
+        estado = json.loads(ESTADO.read_text("utf-8")) if ESTADO.exists() else {}
+        for c in estado.values():
+            if c.get("en_listado") and c.get("estado") == "abierto":
+                r = sesion.get(c["url"], timeout=60)
+                enlace = BeautifulSoup(r.text, "html.parser").select_one('a[href*="inscripcion_af"]')
+                print(f"Curso: {c['titulo']} · enlace de inscripción: {enlace['href'] if enlace else 'NO'}")
+                if enlace:
+                    r = sesion.get(requests.compat.urljoin(BASE, enlace["href"]), timeout=60)
+                    print(f"HTTP {r.status_code} {r.url.replace(BASE, '')}")
+                    describir_formulario(r.text)
+                    break
+        r = sesion.get(f"{BASE}/user", timeout=60)
+        print(f"\n--- Página de usuario: {r.url.replace(BASE, '')}")
+        enlaces = sorted({a["href"] for a in BeautifulSoup(r.text, "html.parser").select("main a[href]")
+                          if a["href"].startswith("/") and "logout" not in a["href"]})
+        print("Enlaces:", enlaces[:40])
+    finally:
+        sesion.get(f"{BASE}/user/logout", timeout=60)
+        print("Sesión cerrada.")
+    return 0
+
+
 def prueba_ntfy() -> int:
     if not NTFY_TEMA:
         print("Falta el secreto NTFY_TEMA.", file=sys.stderr)
@@ -397,6 +457,8 @@ def prueba_ntfy() -> int:
 
 
 if __name__ == "__main__":
+    if "--diagnostico" in sys.argv:
+        sys.exit(diagnostico_inscripcion())
     if "--login" in sys.argv:
         sys.exit(prueba_login())
     sys.exit(prueba_ntfy() if "--prueba" in sys.argv else main())

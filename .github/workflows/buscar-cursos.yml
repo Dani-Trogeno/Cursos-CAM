@@ -16,6 +16,10 @@ on:
         description: "Solo comprobar el inicio de sesión con la cuenta de prueba"
         type: boolean
         default: false
+      diagnostico:
+        description: "(Con probar_login) describir el formulario de inscripción, sin enviar nada"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -49,7 +53,7 @@ jobs:
         env:
           CAM_USUARIO: ${{ secrets.CAM_USUARIO }}
           CAM_PASSWORD: ${{ secrets.CAM_PASSWORD }}
-        run: python buscar_cursos.py --login
+        run: python buscar_cursos.py --login ${{ inputs.diagnostico && '--diagnostico' || '' }}
 
       - name: Buscar cursos MOC
         if: ${{ !inputs.prueba && !inputs.probar_login }}
