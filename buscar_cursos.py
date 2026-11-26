@@ -46,6 +46,65 @@ def es_moc(curso: dict) -> bool:
     return bool(RE_MOC.match(curso["titulo"])) or "no tutorizado" in curso["modalidad"].lower()
 
 
+# ------------------------------------------------- formato (solo asíncrono) ----
+# Queremos MOC que se superen SOLO viendo vídeos/recursos y haciendo cuestionarios:
+# sin sesiones síncronas (webinars, videoconferencias, presencialidad) ni foros/tareas evaluables.
+
+RE_SINCRONO = re.compile(
+    r"webinar|videoconferencia|en directo|\bs[ií]ncron|presencialidad telem|streaming|"
+    r"sesi[oó]n(?:es)? (?:presencial|virtual|en l[ií]nea|online|telem[aá]tica|s[ií]ncrona)|"
+    r"ponencias? a trav[eé]s", re.I)
+RE_FOROS = re.compile(r"participaci[oó]n (?:activa )?en (?:los )?foros|foros? (?:es |son )?obligatori", re.I)
+RE_TAREAS = re.compile(
+    r"\btareas?\b(?! de autoevaluaci)|entrega de|proyecto final|trabajo final|valorad[oa] por la organizaci|"
+    r"pr[aá]ctica evaluable|portafolio|r[uú]brica", re.I)
+RE_CUESTIONARIOS = re.compile(r"cuestionario|autoevaluaci|\btest\b", re.I)
+
+
+def analizar_ficha(html: str) -> dict:
+    """Clasifica el formato del curso: 'apto', 'dudoso' o 'no apto' (con motivos)."""
+    main = BeautifulSoup(html, "html.parser").select_one("main")
+    lineas = (main.get_text("\n", strip=True) if main else "").split("\n")
+    # Fuera la sección de competencia digital: cita "videoconferencia" como competencia, no como requisito.
+    if "Competencia digital docente" in lineas:
+        ini = lineas.index("Competencia digital docente")
+        fin = next((j for j in range(ini + 1, len(lineas))
+                    if lineas[j] in ("Metodología", "Evaluación", "Observaciones")), len(lineas))
+        lineas = lineas[:ini] + lineas[fin:]
+    texto = " ".join(" ".join(lineas).split())
+    frases = [f for f in re.split(r"(?<=[.;:])\s+", texto) if "etiqueta digital" not in f.lower()]
+    motivos, nivel = [], "apto"
+
+    def frase(rx):
+        return next((f for f in frases if rx.search(f)), None)
+
+    try:
+        i = lineas.index("Horas presenciales")
+        presenciales = float(lineas[i + 1].replace(",", "."))
+    except (ValueError, IndexError):
+        presenciales = 0
+    if presenciales > 0:
+        motivos.append(f"Tiene {presenciales:g} horas presenciales/síncronas.")
+        nivel = "no apto"
+    if (f := frase(RE_SINCRONO)):
+        motivos.append(f"Sesiones síncronas: «{f[:200]}»")
+        nivel = "no apto"
+    if (f := frase(RE_FOROS)):
+        motivos.append(f"Participación obligatoria en foros: «{f[:200]}»")
+        nivel = "no apto"
+    if nivel != "no apto":
+        if (f := frase(RE_TAREAS)):
+            motivos.append(f"Puede requerir tareas o valoración adicional: «{f[:200]}»")
+            nivel = "dudoso"
+        if not frase(RE_CUESTIONARIOS):
+            motivos.append("La ficha no menciona cuestionarios como forma de evaluación.")
+            nivel = "dudoso"
+    return {"formato": nivel, "formato_motivos": motivos}
+
+
+ICONO_FORMATO = {"apto": "✅", "dudoso": "⚠️", "no apto": "❌"}
+
+
 def parse_fecha(texto: str) -> date | None:
     try:
         return datetime.strptime(texto, "%d/%m/%Y").date()
@@ -135,7 +194,8 @@ def fila(c: dict) -> str:
     ins = f"{c.get('inscripcion_inicio') or '?'} – {c.get('inscripcion_fin') or '?'}"
     dur = f"{c.get('curso_inicio') or '?'} – {c.get('curso_fin') or '?'}"
     titulo = c["titulo"].replace("|", "/")
-    return f"| [{titulo}]({c['url']}) | {c['estado']} | {ins} | {dur} | {c.get('area', '').replace('|', '/')} |"
+    icono = ICONO_FORMATO.get(c.get("formato", ""), "")
+    return f"| {icono} [{titulo}]({c['url']}) | {c['estado']} | {ins} | {dur} | {c.get('area', '').replace('|', '/')} |"
 
 
 CABECERA = (
@@ -195,6 +255,8 @@ def texto_curso(c: dict) -> str:
             lineas.append("¡Cierra hoy!" if d == 0 else "Cierra mañana" if d == 1 else f"Cierra en {d} días")
     if c.get("curso_inicio"):
         lineas.append(f"Curso: {c['curso_inicio']} – {c.get('curso_fin') or '?'}")
+    if c.get("formato") == "dudoso":
+        lineas.append("⚠️ Revisa el formato: podría tener tareas o no cita cuestionarios.")
     return "\n".join(lineas)
 
 
@@ -266,9 +328,21 @@ def main() -> int:
 
     eventos: list[tuple[str, dict]] = []  # (tipo, curso)
     actuales = set()
+    sesion_fichas = requests.Session()
+    sesion_fichas.headers["User-Agent"] = "Mozilla/5.0 (compatible; cursos-cam-monitor/1.0)"
     for c in filter(es_moc, actividades):
         c["estado"] = estado_inscripcion(c["inscripcion_inicio"], c["inscripcion_fin"])
         previo = estado.get(c["url"]) or {}
+        if "formato" in previo:
+            c["formato"], c["formato_motivos"] = previo["formato"], previo.get("formato_motivos", [])
+        else:
+            try:
+                r = sesion_fichas.get(c["url"], timeout=60)
+                r.raise_for_status()
+                c.update(analizar_ficha(r.text))
+            except requests.RequestException as e:
+                c.update({"formato": "dudoso", "formato_motivos": [f"No se pudo leer la ficha ({e})."]})
+            time.sleep(PAUSA)
         actuales.add(c["url"])
         c["visto_por_primera_vez"] = previo.get("visto_por_primera_vez", ahora)
         if previo.get("solicitud_inscripcion"):
@@ -277,7 +351,7 @@ def main() -> int:
         if previo.get("aviso_apertura"):  # compatibilidad con la versión anterior
             avisos.add("abierto")
         for tipo in tipos_de_aviso(c, es_nuevo=not previo):
-            if tipo not in avisos:
+            if tipo not in avisos and c["formato"] != "no apto":
                 eventos.append((tipo, c))
         # Un curso nuevo ya cubre los avisos de "pronto"/"abierto" que le correspondan hoy.
         avisos.update(tipos_de_aviso(c, es_nuevo=not previo))
@@ -293,7 +367,8 @@ def main() -> int:
 
     # Cursos con el plazo abierto para los que aún no se ha pedido confirmación de inscripción.
     solicitudes = [c for c in estado.values()
-                   if c.get("en_listado") and c["estado"] == "abierto" and not c.get("solicitud_inscripcion")]
+                   if c.get("en_listado") and c["estado"] == "abierto" and not c.get("solicitud_inscripcion")
+                   and c.get("formato") != "no apto"]
     for c in solicitudes:
         c["solicitud_inscripcion"] = ahora
     if solicitudes:
@@ -306,15 +381,20 @@ def main() -> int:
     ESTADO.parent.mkdir(exist_ok=True)
     ESTADO.write_text(json.dumps(dict(sorted(estado.items())), ensure_ascii=False, indent=2) + "\n", "utf-8")
 
-    vigentes = sorted(
-        (c for c in estado.values() if c["en_listado"] and c["estado"] in ("abierto", "próximo")),
-        key=lambda c: (c["estado"] != "abierto", parse_fecha(c.get("inscripcion_inicio")) or date.max),
-    )
+    orden = lambda c: (c["estado"] != "abierto", parse_fecha(c.get("inscripcion_inicio")) or date.max)
+    en_plazo = [c for c in estado.values() if c["en_listado"] and c["estado"] in ("abierto", "próximo")]
+    vigentes = sorted((c for c in en_plazo if c.get("formato") != "no apto"), key=orden)
+    descartados = sorted((c for c in en_plazo if c.get("formato") == "no apto"), key=orden)
     RESUMEN.write_text(
         "# Cursos MOC de la Comunidad de Madrid\n\n"
         f"Actualizado: {ahora} · {len(vigentes)} cursos MOC con inscripción abierta o próxima.\n\n"
+        "Solo se incluyen MOC que se superan viendo vídeos/recursos y haciendo cuestionarios "
+        "(✅ confirmado en la ficha · ⚠️ revisar la ficha).\n\n"
         f"Fuente: <{LISTADO}>\n\n"
-        + CABECERA + "\n" + "\n".join(fila(c) for c in vigentes) + "\n",
+        + CABECERA + "\n" + "\n".join(fila(c) for c in vigentes) + "\n"
+        + ("\n## Descartados por formato (sesiones síncronas, foros o tareas)\n\n"
+           + "\n".join(f"- [{c['titulo']}]({c['url']}): {' '.join(c.get('formato_motivos', []))}"
+                       for c in descartados) + "\n" if descartados else ""),
         "utf-8",
     )
 
@@ -357,7 +437,11 @@ def cuerpo_solicitud(c: dict) -> str:
         f"- **Centro organizador:** {c.get('centro') or '?'}\n"
         f"- **Ficha:** {c['url']}\n\n"
         f"> {c.get('descripcion', '')}\n\n"
-        "### ¿Inscribir a la cuenta de prueba?\n\n"
+        + (f"### ⚠️ Revisa el formato antes de confirmar\n\n"
+           + "\n".join(f"- {m}" for m in c.get("formato_motivos", [])) + "\n\n"
+           if c.get("formato") == "dudoso" else
+           "**Formato:** ✅ solo vídeos/recursos y cuestionarios, sin sesiones síncronas.\n\n")
+        + "### ¿Inscribir a la cuenta de prueba?\n\n"
         "Para confirmar, **pon la etiqueta `inscribir`** a este issue o **escribe un comentario "
         "que diga `inscribir`**. Si no te interesa, ciérralo sin más.\n\n"
         f"<!-- curso: {c['url']} -->\n"

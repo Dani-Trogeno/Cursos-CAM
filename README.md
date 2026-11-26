@@ -12,6 +12,11 @@ y avisa cuando aparecen **cursos MOC** (en línea, no tutorizados) en los que te
    (y a mano desde *Actions → Buscar cursos MOC → Run workflow*).
 2. [`buscar_cursos.py`](buscar_cursos.py) recorre todas las páginas del buscador y se queda con las
    actividades cuyo título empieza por **MOC/MOOC** o cuya modalidad es **«En línea, no tutorizado»**.
+   Después lee la ficha de cada una y comprueba el **formato**: solo valen los cursos que se superan
+   viendo vídeos/recursos y haciendo cuestionarios.
+   - ✅ **apto**: sin sesiones síncronas, foros obligatorios ni tareas.
+   - ⚠️ **dudoso**: la ficha menciona tareas, «valoración de la organización» o no cita cuestionarios (se avisa igualmente, indicando el motivo).
+   - ❌ **no apto**: webinars, videoconferencias, sesiones en directo, horas presenciales o participación obligatoria en foros. No se avisa ni se pide inscripción.
 3. Compara con lo ya visto en [`data/cursos_moc.json`](data/cursos_moc.json) y actualiza [CURSOS.md](CURSOS.md).
 4. Si hay novedades, abre un **issue** con la etiqueta `cursos-moc`:
    - 🆕 un curso MOC nuevo con inscripción abierta o próxima;
