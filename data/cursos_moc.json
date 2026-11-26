@@ -15,9 +15,14 @@
     "formato_motivos": [
       "Participación obligatoria en foros: «el proceso requiere la participación activa en los foros y la superación de los cuestionarios propuestos en los plazos establecidos.»"
     ],
+    "perfil": "no",
+    "perfil_motivos": [
+      "Solo para coordinadores del programa: «Esta actividad está dirigida a coordinadores y colaboradores del programa 4ºESO+ Empresa del ámbito de la Comunidad de Madrid.»"
+    ],
+    "encaja": "no",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-guia-promocion-bienestar-emocional-materiales-accion-tutorial-0": {
@@ -34,11 +39,14 @@
     "estado": "próximo",
     "formato": "apto",
     "formato_motivos": [],
+    "perfil": "sí",
+    "perfil_motivos": [],
+    "encaja": "sí",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-marco-normativo-gestion-administrativa-a0053": {
@@ -55,11 +63,16 @@
     "estado": "próximo",
     "formato": "apto",
     "formato_motivos": [],
+    "perfil": "posible",
+    "perfil_motivos": [
+      "Prioridad para equipos directivos: «…egula la formación permanente del personal docente no universitario.En este curso tendrán prioridad los Equipos directivos, aunque también se oferta al resto del profesorado.»"
+    ],
+    "encaja": "posible",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-mentores-funcionarios-practicas-cuerpo-maestros-curso-26-27-2o-ed-a0043": {
@@ -79,9 +92,14 @@
       "Tiene 5 horas presenciales/síncronas.",
       "Sesiones síncronas: «Esta formación de 30 horas comprende un curso en línea no tutorizado con una estructura modular y secuencial, y de dos webinars en directo de presencialidad telemática obligatoria con una duración de »"
     ],
+    "perfil": "no",
+    "perfil_motivos": [
+      "Solo para el Cuerpo de Maestros: «…DE FUNCIONARIOS EN PRÁCTICAS DEL CUERPO DE MAESTROS CURSO 26-27_ 2º ED (A_0043) Actividad destinada a funcionarios de carrera del Cuerpo de Maestros de todas las especialidades qu»"
+    ],
+    "encaja": "no",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-paisaje-luz-otra-mirada-a0085": {
@@ -98,9 +116,12 @@
     "estado": "cerrado",
     "formato": "apto",
     "formato_motivos": [],
+    "perfil": "sí",
+    "perfil_motivos": [],
+    "encaja": "sí",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-prevencion-riesgos-laborales-0": {
@@ -117,11 +138,14 @@
     "estado": "próximo",
     "formato": "apto",
     "formato_motivos": [],
+    "perfil": "sí",
+    "perfil_motivos": [],
+    "encaja": "sí",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-prevencion-riesgos-laborales-equipos-directivos": {
@@ -140,11 +164,16 @@
     "formato_motivos": [
       "Puede requerir tareas o valoración adicional: «El citado documento se aportará como tarea en un aula virtual.»"
     ],
+    "perfil": "no",
+    "perfil_motivos": [
+      "Solo para equipos directivos: «Para poder realizar el curso, es necesario acreditar la condición de ser miembro del equipo directivo en un centro educativo de la Comunidad de Madrid para el curso 26/27.»"
+    ],
+    "encaja": "no",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-proteccion-bienestar-infantil-adolescente-centros-educativos-nivel-inicial": {
@@ -161,11 +190,14 @@
     "estado": "próximo",
     "formato": "apto",
     "formato_motivos": [],
+    "perfil": "sí",
+    "perfil_motivos": [],
+    "encaja": "sí",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-recursos-practicos-estimulacion-lenguaje-educacion-infantil-a0038": {
@@ -182,11 +214,16 @@
     "estado": "próximo",
     "formato": "apto",
     "formato_motivos": [],
+    "perfil": "posible",
+    "perfil_motivos": [
+      "Contenido de Educación Infantil, no de la etapa de la cuenta."
+    ],
+    "encaja": "posible",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-sostenibilidad-internacionalizacion": {
@@ -203,11 +240,14 @@
     "estado": "próximo",
     "formato": "apto",
     "formato_motivos": [],
+    "perfil": "sí",
+    "perfil_motivos": [],
+    "encaja": "sí",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-un-mundo-circular-economia-circular-futuro-curso-avanzado-a0096": {
@@ -226,9 +266,12 @@
     "formato_motivos": [
       "Puede requerir tareas o valoración adicional: «Evaluación Aprovechamiento positivo valorado por la organización.»"
     ],
+    "perfil": "sí",
+    "perfil_motivos": [],
+    "encaja": "posible",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-un-mundo-circular-formacion-basica-a0094": {
@@ -247,9 +290,12 @@
     "formato_motivos": [
       "Puede requerir tareas o valoración adicional: «Evaluación Aprovechamiento positivo valorado por la organización.»"
     ],
+    "perfil": "sí",
+    "perfil_motivos": [],
+    "encaja": "posible",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/riesgos-emergencias-proteccion-civil-centros-educativos": {
@@ -266,13 +312,16 @@
     "estado": "abierto",
     "formato": "apto",
     "formato_motivos": [],
+    "perfil": "sí",
+    "perfil_motivos": [],
+    "encaja": "sí",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "solicitud_inscripcion": "2026-11-26T15:36:07+01:00",
     "avisos": [
       "abierto",
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-26T15:52:59+01:00",
+    "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
     "en_listado": true
   }
 }
