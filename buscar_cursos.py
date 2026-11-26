@@ -365,9 +365,11 @@ def cuerpo_solicitud(c: dict) -> str:
 
 
 def inscripciones_actuales(sesion: requests.Session) -> str:
+    """HTML + texto de «Mis inscripciones», en minúsculas, para buscar el curso."""
     r = sesion.get(f"{BASE}/usuario/inscripciones", timeout=60)
-    main = BeautifulSoup(r.text, "html.parser").select_one("main") 
-    return " ".join((main.get_text(" ", strip=True) if main else r.text).split()).lower()
+    soup = BeautifulSoup(r.text, "html.parser")
+    texto = " ".join(soup.get_text(" ", strip=True).split())
+    return (r.text + " " + texto).lower()
 
 
 def inscribir(url_curso: str) -> tuple[bool, str]:
@@ -383,7 +385,13 @@ def inscribir(url_curso: str) -> tuple[bool, str]:
         r = sesion.get(url_curso, timeout=60)
         r.raise_for_status()
         ficha = BeautifulSoup(r.text, "html.parser")
-        titulo = " ".join(ficha.select_one("h1").get_text(" ", strip=True).split()) if ficha.select_one("h1") else url_curso
+        og = ficha.select_one('meta[property="og:title"]')
+        if og and og.get("content"):
+            titulo = og["content"].strip()
+        elif ficha.title:
+            titulo = ficha.title.get_text(strip=True).split("|")[0].strip()
+        else:
+            titulo = url_curso
         enlace = ficha.select_one('a[href*="inscripcion_af"]')
         if not enlace:
             return False, (f"La ficha de «{titulo}» no tiene botón de inscripción "
@@ -417,7 +425,11 @@ def inscribir(url_curso: str) -> tuple[bool, str]:
             return False, f"La web devolvió un error al inscribir en «{titulo}»: {' / '.join(errores)[:400]}"
 
         lista = inscripciones_actuales(sesion)
-        confirmado = titulo.lower() in lista or (course_id and course_id in lista)
+        slug = url_curso.rstrip("/").rsplit("/", 1)[-1].lower()
+        confirmado = (titulo.lower() in lista or slug in lista
+                      or bool(course_id and course_id in lista))
+        if not confirmado and any("inscrito correctamente" in e.lower() for e in estados):
+            return True, f"Inscripción realizada en «{titulo}» (la web confirma: «Se ha inscrito correctamente»)."
         detalle = f" Mensaje de la web: {' / '.join(estados)[:300]}" if estados else ""
         if confirmado:
             return True, f"Inscripción realizada en «{titulo}» y confirmada en «Mis inscripciones».{detalle}"
