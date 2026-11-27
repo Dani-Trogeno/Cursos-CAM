@@ -6,6 +6,9 @@ on:
     # a las 09:00 y 10:00 UTC y el script descarta la que no corresponde
     # (invierno: 10:00 UTC = 11:00 Madrid; verano: 09:00 UTC = 11:00 Madrid).
     - cron: "0 9,10 * * *"
+    # Inscripciones a las 00:00 (Madrid) del día que abre el plazo: se lanza a las 23:55 Madrid
+    # (21:55 UTC en verano, 22:55 UTC en invierno) y el script espera hasta las 00:00:05.
+    - cron: "55 21,22 * * *"
   workflow_dispatch:
     inputs:
       prueba:
@@ -14,6 +17,10 @@ on:
         default: false
       probar_login:
         description: "Solo comprobar el inicio de sesión con la cuenta de prueba"
+        type: boolean
+        default: false
+      medianoche:
+        description: "Solo procesar ahora las inscripciones aprobadas con el plazo abierto"
         type: boolean
         default: false
       diagnostico:
@@ -56,8 +63,19 @@ jobs:
           CAM_PASSWORD: ${{ secrets.CAM_PASSWORD }}
         run: python buscar_cursos.py --login ${{ inputs.diagnostico && '--diagnostico' || '' }}
 
+      - name: Inscripciones de medianoche
+        if: ${{ github.event.schedule == '55 21,22 * * *' || inputs.medianoche }}
+        timeout-minutes: 120
+        env:
+          CORREO_REMITENTE: ${{ secrets.CORREO_REMITENTE }}
+          CORREO_PASSWORD: ${{ secrets.CORREO_PASSWORD }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
+          CAM_USUARIO: ${{ secrets.CAM_USUARIO }}
+          CAM_PASSWORD: ${{ secrets.CAM_PASSWORD }}
+        run: python buscar_cursos.py --medianoche ${{ inputs.medianoche && '--forzar' || '' }}
+
       - name: Buscar cursos MOC
-        if: ${{ !inputs.prueba && !inputs.probar_login }}
+        if: ${{ !inputs.prueba && !inputs.probar_login && !inputs.medianoche && github.event.schedule != '55 21,22 * * *' }}
         env:
           CORREO_REMITENTE: ${{ secrets.CORREO_REMITENTE }}
           CORREO_PASSWORD: ${{ secrets.CORREO_PASSWORD }}

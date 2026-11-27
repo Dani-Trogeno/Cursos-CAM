@@ -543,7 +543,7 @@ def html_propuesta(c: dict, mailto: str) -> str:
     formato_txt = {"apto": "Solo vídeos/recursos y cuestionarios", "dudoso": "Revisar (posibles tareas)",
                    "no apto": "Tiene sesiones síncronas o foros"}.get(c.get("formato"), "?")
     abre = parse_fecha(c.get("inscripcion_inicio"))
-    cuando = "en cuanto se reciba tu respuesta" if c["estado"] == "abierto" else f"el {e(c.get('inscripcion_inicio'))}, al abrir el plazo"
+    cuando = "en cuanto se reciba tu respuesta" if c["estado"] == "abierto" else f"el {e(c.get('inscripcion_inicio'))} a las 00:00, nada más abrir el plazo"
     return f"""<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#1f2328;max-width:600px">
 <h2 style="font-size:19px;margin:0 0 12px">{e(c['titulo'])}</h2>
 <table style="border-collapse:collapse;margin-bottom:14px">
@@ -631,7 +631,7 @@ def procesar_propuestas(estado: dict, ahora: str) -> None:
         if c["estado"] != "abierto":
             enviar_correo(f"Inscripción programada: {c['titulo']}",
                           f"Recibido. La cuenta de prueba se inscribirá automáticamente el "
-                          f"{c.get('inscripcion_inicio')}, cuando abra el plazo.", c["url"])
+                          f"{c.get('inscripcion_inicio')} a las 00:00, nada más abrir el plazo.", c["url"])
 
     # 2) Propuestas: N días antes de que abra el plazo (o ya, si está abierto).
     if CORREO_ACTIVO:
@@ -658,6 +658,70 @@ def procesar_propuestas(estado: dict, ahora: str) -> None:
                 notificar(f"✅ Inscrito: {c['titulo']}" if ok else f"❌ No se pudo inscribir: {c['titulo']}",
                           mensaje if ok else f"{mensaje}\nSe reintentará mañana mientras el plazo siga abierto.",
                           ["white_check_mark" if ok else "x"], 4, c["url"])
+
+
+def inscripciones_medianoche() -> int:
+    """Ejecución de las 23:55 (Madrid): espera a las 00:00 e inscribe los cursos aprobados que abren ese día.
+
+    GitHub programa en UTC, así que el workflow se lanza a dos horas UTC (horario de invierno y de
+    verano); la que no cae a las 23:xx de Madrid termina sin hacer nada, salvo que ya sea de madrugada
+    (por un retraso de GitHub), en cuyo caso se procesa el día en curso.
+    """
+    global HOY
+    madrid = ZoneInfo("Europe/Madrid")
+    ahora = datetime.now(madrid)
+    forzar = "--forzar" in sys.argv
+    if ahora.hour == 23:
+        objetivo = datetime.combine(ahora.date().fromordinal(ahora.date().toordinal() + 1),
+                                    datetime.min.time(), madrid).replace(second=5)
+        espera = (objetivo - ahora).total_seconds()
+        print(f"Son las {ahora:%H:%M:%S}; espero {espera:.0f} s hasta las 00:00:05.")
+        time.sleep(max(0, espera))
+    elif ahora.hour >= 6 and not forzar:
+        print(f"Son las {ahora:%H:%M} en Madrid: esta ejecución no corresponde (horario de verano/invierno).")
+        return 0
+    HOY = datetime.now(madrid).date()
+    marca = datetime.now(madrid).isoformat(timespec="seconds")
+
+    estado = json.loads(ESTADO.read_text("utf-8")) if ESTADO.exists() else {}
+    # Aprobaciones de última hora.
+    tokens = {c["propuesta"]["token"]: url for url, c in estado.items()
+              if c.get("propuesta") and not c.get("aprobado")}
+    for url in leer_aprobaciones(tokens):
+        estado[url]["aprobado"] = marca
+        print(f"Aprobado por correo: {estado[url]['titulo']}")
+
+    pendientes = []
+    for c in estado.values():
+        c["estado"] = estado_inscripcion(c.get("inscripcion_inicio"), c.get("inscripcion_fin"))
+        if (c.get("aprobado") and c.get("en_listado") and c["estado"] == "abierto"
+                and not (c.get("inscripcion") or {}).get("ok")):
+            pendientes.append(c)
+    if not pendientes:
+        print(f"{HOY:%d/%m/%Y}: no hay inscripciones aprobadas pendientes con el plazo abierto.")
+    credenciales = os.environ.get("CAM_USUARIO") and os.environ.get("CAM_PASSWORD")
+    intentos = int(os.environ.get("REINTENTOS_MEDIANOCHE", "7"))
+    for intento in range(intentos):
+        for c in list(pendientes):
+            ok, mensaje = inscribir(c["url"]) if credenciales else (False, "Faltan CAM_USUARIO/CAM_PASSWORD.")
+            hora = datetime.now(madrid).isoformat(timespec="seconds")
+            print(f"[{hora}] " + ("Inscrito: " if ok else "Fallo: ") + mensaje)
+            c["inscripcion"] = {"fecha": hora, "ok": ok, "mensaje": mensaje}
+            if ok:
+                pendientes.remove(c)
+                if HAY_AVISOS:
+                    notificar(f"✅ Inscrito: {c['titulo']}", f"{mensaje}\nHora: {hora[11:19]}",
+                              ["white_check_mark"], 4, c["url"])
+        if not pendientes or intento == intentos - 1:
+            break
+        time.sleep(300)
+    for c in pendientes:
+        if HAY_AVISOS:
+            notificar(f"❌ No se pudo inscribir: {c['titulo']}",
+                      f"{c['inscripcion']['mensaje']}\nSe reintentará en la revisión de las 11:00.",
+                      ["x"], 4, c["url"])
+    ESTADO.write_text(json.dumps(dict(sorted(estado.items())), ensure_ascii=False, indent=2) + "\n", "utf-8")
+    return 0
 
 
 # ----------------------------------------------------------- inscripción ----
@@ -934,6 +998,8 @@ def prueba_ntfy() -> int:
 
 
 if __name__ == "__main__":
+    if "--medianoche" in sys.argv:
+        sys.exit(inscripciones_medianoche())
     if "--inscribir-desde-issue" in sys.argv:
         sys.exit(inscribir_desde_issue())
     if "--avisar-solicitud" in sys.argv:

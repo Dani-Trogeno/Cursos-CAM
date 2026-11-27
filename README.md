@@ -38,8 +38,10 @@ Secundaria de Matemáticas, tutor, sin cargo directivo) y su formato (🟢 Sí �
 3. Cada día a las 11:00 el sistema lee el buzón de Gmail por IMAP. Si encuentra la respuesta
    (enviada desde `CORREO_DESTINO` y con el código correcto), confirma por correo que la inscripción
    queda programada.
-4. **El día que abre el plazo** inscribe a la cuenta y envía el resultado por correo. Si falla, lo
-   reintenta cada día mientras el plazo siga abierto.
+4. **A las 00:00 del día que abre el plazo** inscribe a la cuenta y envía el resultado por correo.
+   (El workflow se lanza a las 23:55 de Madrid y espera a las 00:00:05; si la web aún no deja
+   inscribirse, reintenta cada 5 minutos durante media hora, y después en la revisión de las 11:00
+   de cada día mientras el plazo siga abierto.)
 
 No se inscribe en nada sin pulsar «Inscribirse». Los MOC con formato ❌ (sesiones síncronas o foros)
 no generan correo.
