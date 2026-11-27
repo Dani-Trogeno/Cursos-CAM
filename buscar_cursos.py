@@ -351,7 +351,7 @@ def enviar_ntfy(titulo: str, mensaje: str, tags: list[str], prioridad: int, url:
     return False
 
 
-def enviar_correo(titulo: str, mensaje: str, url: str) -> bool:
+def enviar_correo(titulo: str, mensaje: str, url: str, html: str | None = None) -> bool:
     import smtplib
     from email.message import EmailMessage
     from html import escape
@@ -362,7 +362,10 @@ def enviar_correo(titulo: str, mensaje: str, url: str) -> bool:
     msg["To"] = ", ".join(CORREO_DESTINO)
     msg.set_content(f"{mensaje}\n\n{url}\n")
     html_cuerpo = "<br>".join(escape(l) for l in mensaje.split("\n"))
-    msg.add_alternative(
+    if html:
+        msg.add_alternative(html, subtype="html")
+    else:
+      msg.add_alternative(
         f"<div style='font-family:sans-serif;font-size:15px;line-height:1.5'>"
         f"<h2 style='font-size:18px'>{escape(titulo)}</h2><p>{html_cuerpo}</p>"
         f"<p><a href='{escape(url)}' style='background:#1d76db;color:#fff;padding:8px 14px;"
@@ -469,8 +472,9 @@ def main() -> int:
                           "perfil": "posible", "perfil_motivos": []})
             time.sleep(PAUSA)
         c["encaja"] = encaja(c)
-        if previo.get("inscripcion_auto"):
-            c["inscripcion_auto"] = previo["inscripcion_auto"]
+        for campo in ("propuesta", "aprobado", "inscripcion", "inscripcion_auto"):
+            if previo.get(campo):
+                c[campo] = previo[campo]
         actuales.add(c["url"])
         c["visto_por_primera_vez"] = previo.get("visto_por_primera_vez", ahora)
         if previo.get("solicitud_inscripcion"):
@@ -493,40 +497,7 @@ def main() -> int:
             c["en_listado"] = False
             c["estado"] = estado_inscripcion(c.get("inscripcion_inicio"), c.get("inscripcion_fin"))
 
-    # Cursos con el plazo abierto para los que aún no se ha pedido confirmación de inscripción.
-    solicitudes = [c for c in estado.values()
-                   if c.get("en_listado") and c["estado"] == "abierto" and not c.get("solicitud_inscripcion")
-                   and c.get("formato") != "no apto"]
-    for c in solicitudes:
-        c["solicitud_inscripcion"] = ahora
-
-    # Los que encajan (formato ✅ + perfil ✅) se inscriben solos; el resto pide confirmación.
-    inscritos = []
-    auto_activa = os.environ.get("INSCRIPCION_AUTOMATICA", "true").lower() not in ("false", "0", "no")
-    if auto_activa and os.environ.get("CAM_USUARIO") and os.environ.get("CAM_PASSWORD"):
-        for c in [c for c in solicitudes if c["encaja"] == "sí"]:
-            ok, mensaje = inscribir(c["url"])
-            print(("Inscrito: " if ok else "Fallo al inscribir: ") + mensaje)
-            c["inscripcion_auto"] = {"fecha": ahora, "ok": ok, "mensaje": mensaje}
-            if HAY_AVISOS:
-                notificar("✅ Inscrito automáticamente" if ok else "❌ Falló la inscripción automática",
-                            mensaje if ok else f"{mensaje}\nTe pido confirmación en GitHub.",
-                            ["white_check_mark" if ok else "x"], 4, c["url"])
-            if ok:
-                inscritos.append(c)
-                solicitudes.remove(c)
-    if inscritos:
-        INSCRITOS.write_text(json.dumps(
-            [{"titulo": c["titulo"], "cuerpo": cuerpo_inscrito(c)} for c in inscritos],
-            ensure_ascii=False, indent=2), "utf-8")
-    elif INSCRITOS.exists():
-        INSCRITOS.unlink()
-    if solicitudes:
-        SOLICITUDES.write_text(json.dumps(
-            [{"url": c["url"], "titulo": c["titulo"], "cuerpo": cuerpo_solicitud(c)} for c in solicitudes],
-            ensure_ascii=False, indent=2), "utf-8")
-    elif SOLICITUDES.exists():
-        SOLICITUDES.unlink()
+    procesar_propuestas(estado, ahora)
 
     ESTADO.parent.mkdir(exist_ok=True)
     ESTADO.write_text(json.dumps(dict(sorted(estado.items())), ensure_ascii=False, indent=2) + "\n", "utf-8")
@@ -548,34 +519,145 @@ def main() -> int:
         "utf-8",
     )
 
-    # Si un curso es nuevo, no mandamos además "pronto"/"abierto" en la misma ejecución.
-    nuevos_urls = {c["url"] for t, c in eventos if t == "nuevo"}
-    eventos = [(t, c) for t, c in eventos if t == "nuevo" or c["url"] not in nuevos_urls]
-    por_tipo = {t: [c for tt, c in eventos if tt == t] for t in TIPOS}
-    print(f"{len(actividades)} actividades, {len(actuales)} MOC; avisos: "
-          + ", ".join(f"{t}={len(v)}" for t, v in por_tipo.items()))
-
-    auto_ok = {c["url"] for c in inscritos}
-    eventos = [(t, c) for t, c in eventos if not (t == "abierto" and c["url"] in auto_ok)]
-    avisar_ntfy(eventos, primera_vez)
-
-    nuevos, abiertos_ahora = por_tipo["nuevo"], por_tipo["abierto"]
-    if nuevos or abiertos_ahora:
-        partes = []
-        if primera_vez:
-            partes.append("Primera ejecución: estos son los cursos MOC disponibles ahora mismo.\n")
-        if nuevos:
-            partes.append("## 🆕 Cursos MOC nuevos\n\n" + CABECERA + "\n" + "\n".join(map(fila, nuevos)) + "\n")
-        if abiertos_ahora:
-            partes.append("## ✅ Ya se puede inscribir en\n\n" + CABECERA + "\n" + "\n".join(map(fila, abiertos_ahora)) + "\n")
-        repo, rama = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_REF_NAME", "main")
-        if repo:
-            partes.append(f"\nListado completo: https://github.com/{repo}/blob/{rama}/CURSOS.md")
-        partes.append(f"\nFuente: {LISTADO}\n")
-        NUEVOS.write_text("\n".join(partes), "utf-8")
-    elif NUEVOS.exists():
-        NUEVOS.unlink()
+    print(f"{len(actividades)} actividades, {len(actuales)} MOC.")
     return 0
+
+
+# ------------------------------------------- propuestas y aprobaciones ----
+# 1) N días antes de que abra el plazo se envía un correo «[Cursos MOC] <curso>» con la compatibilidad
+#    y un botón «Inscribirse» (mailto con un código único).
+# 2) Cada ejecución lee el buzón por IMAP: si hay una respuesta «INSCRIBIR <código>» enviada desde
+#    CORREO_DESTINO, el curso queda aprobado.
+# 3) El día que abre el plazo (o en cuanto se apruebe, si ya está abierto) se inscribe la cuenta.
+
+DIAS_PROPUESTA = int(os.environ.get("AVISO_DIAS_PROPUESTA", "7"))
+RE_APROBACION = re.compile(r"INSCRIBIR\s+([0-9a-f]{8})\b", re.I)
+
+
+def html_propuesta(c: dict, mailto: str) -> str:
+    from html import escape
+    e = lambda x: escape(str(x or "?"))
+    color = {"sí": "#1a7f37", "posible": "#9a6700", "no": "#cf222e"}.get(c.get("encaja"), "#57606a")
+    motivos = "".join(f"<li>{e(m)}</li>" for m in c.get("formato_motivos", []) + c.get("perfil_motivos", []))
+    perfil_txt = {"sí": "Compatible", "posible": "Con dudas", "no": "No compatible"}.get(c.get("perfil"), "?")
+    formato_txt = {"apto": "Solo vídeos/recursos y cuestionarios", "dudoso": "Revisar (posibles tareas)",
+                   "no apto": "Tiene sesiones síncronas o foros"}.get(c.get("formato"), "?")
+    abre = parse_fecha(c.get("inscripcion_inicio"))
+    cuando = "en cuanto se reciba tu respuesta" if c["estado"] == "abierto" else f"el {e(c.get('inscripcion_inicio'))}, al abrir el plazo"
+    return f"""<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#1f2328;max-width:600px">
+<h2 style="font-size:19px;margin:0 0 12px">{e(c['titulo'])}</h2>
+<table style="border-collapse:collapse;margin-bottom:14px">
+<tr><td style="padding:2px 12px 2px 0;color:#57606a">Plazo de inscripción</td><td><b>{e(c.get('inscripcion_inicio'))} – {e(c.get('inscripcion_fin'))}</b></td></tr>
+<tr><td style="padding:2px 12px 2px 0;color:#57606a">Duración del curso</td><td>{e(c.get('curso_inicio'))} – {e(c.get('curso_fin'))}</td></tr>
+<tr><td style="padding:2px 12px 2px 0;color:#57606a">Área</td><td>{e(c.get('area'))}</td></tr>
+<tr><td style="padding:2px 12px 2px 0;color:#57606a">Organiza</td><td>{e(c.get('centro'))}</td></tr>
+</table>
+<div style="border:1px solid #d0d7de;border-left:5px solid {color};border-radius:6px;padding:10px 14px;margin-bottom:14px">
+<div style="font-weight:bold;color:{color};margin-bottom:6px">Compatibilidad con el perfil de pruebas: {e(ICONO_ENCAJA.get(c.get('encaja')))}</div>
+<div>Formato: {e(ICONO_FORMATO.get(c.get('formato')))} {e(formato_txt)}</div>
+<div>Perfil (Secundaria · Matemáticas · tutor): {e(perfil_txt)}</div>
+{f'<ul style="margin:6px 0 0 18px;padding:0;color:#57606a;font-size:14px">{motivos}</ul>' if motivos else ''}
+</div>
+<p style="color:#57606a;font-size:14px;margin:0 0 14px">{e(c.get('descripcion'))}</p>
+<p style="margin:18px 0">
+<a href="{e(mailto)}" style="background:#1a7f37;color:#fff;padding:12px 22px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:16px">Inscribirse</a>
+&nbsp;&nbsp;<a href="{e(c['url'])}" style="color:#0969da">Ver ficha del curso</a></p>
+<p style="color:#57606a;font-size:13px">Al pulsar «Inscribirse» se abre un correo de respuesta ya preparado: solo tienes que <b>enviarlo</b>.
+La cuenta de prueba se inscribirá {cuando}. Si no te interesa, ignora este correo.</p>
+<p style="color:#8c959f;font-size:12px">Enviado automáticamente por el monitor de cursos MOC.</p></div>"""
+
+
+def enviar_propuesta(c: dict, token: str) -> bool:
+    from urllib.parse import quote
+    asunto = f"INSCRIBIR {token} - {c['titulo']}"
+    cuerpo = (f"Quiero inscribir a la cuenta de prueba en:\n{c['titulo']}\n{c['url']}\n\n"
+              "(No cambies el asunto: contiene el código del curso.)")
+    mailto = f"mailto:{CORREO_REMITENTE}?subject={quote(asunto)}&body={quote(cuerpo)}"
+    texto = (f"Plazo de inscripción: {c.get('inscripcion_inicio')} – {c.get('inscripcion_fin')}\n"
+             f"Compatibilidad: {ICONO_ENCAJA.get(c.get('encaja'))}\n\n"
+             f"Para inscribirte, responde a este correo con el asunto:\n{asunto}")
+    return enviar_correo(c["titulo"], texto, c["url"], html=html_propuesta(c, mailto))
+
+
+def leer_aprobaciones(tokens: dict[str, str]) -> set[str]:
+    """Busca en Gmail (IMAP) respuestas «INSCRIBIR <código>» enviadas desde CORREO_DESTINO."""
+    import email
+    import imaplib
+    from email.header import decode_header, make_header
+    from email.utils import parseaddr
+
+    if not tokens or not CORREO_ACTIVO:
+        return set()
+    aprobados = set()
+    destinos = {d.lower() for d in CORREO_DESTINO}
+    meses = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    desde = HOY.fromordinal(HOY.toordinal() - 90)
+    try:
+        with imaplib.IMAP4_SSL(os.environ.get("IMAP_SERVIDOR", "imap.gmail.com"), timeout=60) as imap:
+            imap.login(CORREO_REMITENTE, CORREO_PASSWORD)
+            carpeta = "INBOX"
+            _, carpetas = imap.list()
+            for linea in carpetas or []:
+                linea = linea.decode(errors="replace")
+                if "\\All" in linea:  # «Todos» / «All Mail» de Gmail
+                    carpeta = linea.rsplit(' "/" ', 1)[-1]
+                    break
+            imap.select(carpeta, readonly=True)
+            criterio = f'(SINCE {desde.day:02d}-{meses[desde.month - 1]}-{desde.year} SUBJECT "INSCRIBIR")'
+            _, datos = imap.search(None, criterio)
+            for num in (datos[0].split() if datos and datos[0] else []):
+                _, partes = imap.fetch(num, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT)])")
+                cab = email.message_from_bytes(partes[0][1])
+                remitente = parseaddr(cab.get("From", ""))[1].lower()
+                asunto = str(make_header(decode_header(cab.get("Subject", ""))))
+                m = RE_APROBACION.search(asunto)
+                if m and remitente in destinos and m.group(1).lower() in tokens:
+                    aprobados.add(tokens[m.group(1).lower()])
+    except (imaplib.IMAP4.error, OSError) as e:
+        print(f"No se pudo leer el buzón por IMAP ({e}).", file=sys.stderr)
+    return aprobados
+
+
+def procesar_propuestas(estado: dict, ahora: str) -> None:
+    import secrets as _secrets
+
+    # 1) Aprobaciones recibidas por correo.
+    tokens = {c["propuesta"]["token"]: url for url, c in estado.items()
+              if c.get("propuesta") and not c.get("aprobado")}
+    for url in leer_aprobaciones(tokens):
+        c = estado[url]
+        c["aprobado"] = ahora
+        print(f"Aprobado por correo: {c['titulo']}")
+        if c["estado"] != "abierto":
+            enviar_correo(f"Inscripción programada: {c['titulo']}",
+                          f"Recibido. La cuenta de prueba se inscribirá automáticamente el "
+                          f"{c.get('inscripcion_inicio')}, cuando abra el plazo.", c["url"])
+
+    # 2) Propuestas: N días antes de que abra el plazo (o ya, si está abierto).
+    if CORREO_ACTIVO:
+        for c in estado.values():
+            if (not c.get("en_listado") or c.get("formato") == "no apto" or c.get("propuesta")
+                    or (c.get("inscripcion") or {}).get("ok") or c["estado"] == "cerrado"):
+                continue
+            d = dias_hasta(c.get("inscripcion_inicio"))
+            if c["estado"] == "abierto" or (d is not None and d <= DIAS_PROPUESTA):
+                token = _secrets.token_hex(4)
+                if enviar_propuesta(c, token):
+                    c["propuesta"] = {"fecha": ahora, "token": token}
+                    print(f"Propuesta enviada: {c['titulo']}")
+
+    # 3) Inscribir los aprobados cuyo plazo ya está abierto.
+    credenciales = os.environ.get("CAM_USUARIO") and os.environ.get("CAM_PASSWORD")
+    for c in estado.values():
+        if (c.get("aprobado") and c.get("en_listado") and c["estado"] == "abierto"
+                and not (c.get("inscripcion") or {}).get("ok")):
+            ok, mensaje = inscribir(c["url"]) if credenciales else (False, "Faltan CAM_USUARIO/CAM_PASSWORD.")
+            c["inscripcion"] = {"fecha": ahora, "ok": ok, "mensaje": mensaje}
+            print(("Inscrito: " if ok else "Fallo al inscribir: ") + mensaje)
+            if HAY_AVISOS:
+                notificar(f"✅ Inscrito: {c['titulo']}" if ok else f"❌ No se pudo inscribir: {c['titulo']}",
+                          mensaje if ok else f"{mensaje}\nSe reintentará mañana mientras el plazo siga abierto.",
+                          ["white_check_mark" if ok else "x"], 4, c["url"])
 
 
 # ----------------------------------------------------------- inscripción ----

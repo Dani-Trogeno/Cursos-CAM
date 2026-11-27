@@ -322,6 +322,11 @@
       "nuevo"
     ],
     "ultima_vez_visto": "2026-11-26T16:01:37+01:00",
-    "en_listado": true
+    "en_listado": true,
+    "inscripcion": {
+      "fecha": "2026-11-26T15:37:47+01:00",
+      "ok": true,
+      "mensaje": "Inscripción confirmada desde el issue #2 («Se ha inscrito correctamente»)."
+    }
   }
 }

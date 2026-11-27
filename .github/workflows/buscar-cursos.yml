@@ -23,7 +23,6 @@ on:
 
 permissions:
   contents: write
-  issues: write
 
 concurrency:
   group: buscar-cursos
@@ -63,12 +62,9 @@ jobs:
           CORREO_REMITENTE: ${{ secrets.CORREO_REMITENTE }}
           CORREO_PASSWORD: ${{ secrets.CORREO_PASSWORD }}
           CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
-          AVISO_DIAS_ANTES: ${{ vars.AVISO_DIAS_ANTES || '3' }}
-          AVISO_DIAS_CIERRE: ${{ vars.AVISO_DIAS_CIERRE || '2' }}
           HORA_EJECUCION: ${{ github.event_name == 'schedule' && '11' || '' }}
-          # Inscripción automática en los MOC que encajan (formato ✅ + perfil ✅).
-          # Para desactivarla: variable de repositorio INSCRIPCION_AUTOMATICA = false
-          INSCRIPCION_AUTOMATICA: ${{ vars.INSCRIPCION_AUTOMATICA || 'true' }}
+          # Días de antelación del correo con el botón «Inscribirse».
+          AVISO_DIAS_PROPUESTA: ${{ vars.AVISO_DIAS_PROPUESTA || '7' }}
           CAM_USUARIO: ${{ secrets.CAM_USUARIO }}
           CAM_PASSWORD: ${{ secrets.CAM_PASSWORD }}
         run: python buscar_cursos.py
@@ -85,59 +81,3 @@ jobs:
             git commit -m "Actualizar cursos MOC ($(date -u +%F))"
             git push
           fi
-
-      - name: Registrar inscripciones automáticas (issue cerrado por curso)
-        if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('inscritos.json') != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh label create inscrito --color 5319e7 --description "Inscripción realizada" 2>/dev/null || true
-          gh label create inscripcion-automatica --color c2e0c6 --description "Inscrito automáticamente" 2>/dev/null || true
-          n=$(python -c "import json;print(len(json.load(open('inscritos.json'))))")
-          for i in $(seq 0 $((n-1))); do
-            titulo=$(python -c "import json;print(json.load(open('inscritos.json'))[$i]['titulo'])")
-            python -c "import json;print(json.load(open('inscritos.json'))[$i]['cuerpo'])" > cuerpo.md
-            url=$(gh issue create --title "✅ Inscrito automáticamente: $titulo" --body-file cuerpo.md \
-                    --label inscrito --label inscripcion-automatica)
-            gh issue close "$url" --reason completed
-            echo "Registrado $url"
-          done
-
-      - name: Pedir confirmación de inscripción (un issue por curso)
-        if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('solicitudes.json') != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CORREO_REMITENTE: ${{ secrets.CORREO_REMITENTE }}
-          CORREO_PASSWORD: ${{ secrets.CORREO_PASSWORD }}
-          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
-        run: |
-          gh label create solicitud-inscripcion --color fbca04 --description "Pendiente de confirmar inscripción" 2>/dev/null || true
-          gh label create inscribir --color 0e8a16 --description "Confirma la inscripción en el curso" 2>/dev/null || true
-          gh label create inscrito --color 5319e7 --description "Inscripción realizada" 2>/dev/null || true
-          n=$(python -c "import json;print(len(json.load(open('solicitudes.json'))))")
-          for i in $(seq 0 $((n-1))); do
-            titulo=$(python -c "import json,sys;print(json.load(open('solicitudes.json'))[$i]['titulo'])")
-            python -c "import json;print(json.load(open('solicitudes.json'))[$i]['cuerpo'])" > cuerpo.md
-            url=$(gh issue create --title "📝 ¿Inscribir en: $titulo?" --body-file cuerpo.md \
-                    --label solicitud-inscripcion --assignee "${{ github.repository_owner }}" \
-                  || gh issue create --title "📝 ¿Inscribir en: $titulo?" --body-file cuerpo.md \
-                    --label solicitud-inscripcion)
-            echo "Creado $url"
-            python buscar_cursos.py --avisar-solicitud "$titulo" "$url"
-          done
-
-      - name: Avisar de cursos nuevos (issue)
-        if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('nuevos.md') != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh label create cursos-moc --color 1d76db --description "Avisos de cursos MOC" 2>/dev/null || true
-          gh issue create \
-            --title "Cursos MOC nuevos – $(TZ=Europe/Madrid date +%d/%m/%Y)" \
-            --body-file nuevos.md \
-            --label cursos-moc \
-            --assignee "${{ github.repository_owner }}" \
-          || gh issue create \
-            --title "Cursos MOC nuevos – $(TZ=Europe/Madrid date +%d/%m/%Y)" \
-            --body-file nuevos.md \
-            --label cursos-moc
