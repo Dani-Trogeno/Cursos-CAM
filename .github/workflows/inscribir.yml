@@ -47,7 +47,9 @@ jobs:
         env:
           CAM_USUARIO: ${{ secrets.CAM_USUARIO }}
           CAM_PASSWORD: ${{ secrets.CAM_PASSWORD }}
-          NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
+          CORREO_REMITENTE: ${{ secrets.CORREO_REMITENTE }}
+          CORREO_PASSWORD: ${{ secrets.CORREO_PASSWORD }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
         run: python buscar_cursos.py --inscribir-desde-issue

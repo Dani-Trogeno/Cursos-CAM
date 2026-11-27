@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       prueba:
-        description: "Solo enviar una notificación de prueba a ntfy"
+        description: "Solo enviar un correo de prueba"
         type: boolean
         default: false
       probar_login:
@@ -45,7 +45,9 @@ jobs:
       - name: Notificación de prueba
         if: inputs.prueba
         env:
-          NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
+          CORREO_REMITENTE: ${{ secrets.CORREO_REMITENTE }}
+          CORREO_PASSWORD: ${{ secrets.CORREO_PASSWORD }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
         run: python buscar_cursos.py --prueba
 
       - name: Comprobar inicio de sesión
@@ -58,7 +60,9 @@ jobs:
       - name: Buscar cursos MOC
         if: ${{ !inputs.prueba && !inputs.probar_login }}
         env:
-          NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
+          CORREO_REMITENTE: ${{ secrets.CORREO_REMITENTE }}
+          CORREO_PASSWORD: ${{ secrets.CORREO_PASSWORD }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
           AVISO_DIAS_ANTES: ${{ vars.AVISO_DIAS_ANTES || '3' }}
           AVISO_DIAS_CIERRE: ${{ vars.AVISO_DIAS_CIERRE || '2' }}
           HORA_EJECUCION: ${{ github.event_name == 'schedule' && '11' || '' }}
@@ -103,7 +107,9 @@ jobs:
         if: ${{ !inputs.prueba && !inputs.probar_login && hashFiles('solicitudes.json') != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
+          CORREO_REMITENTE: ${{ secrets.CORREO_REMITENTE }}
+          CORREO_PASSWORD: ${{ secrets.CORREO_PASSWORD }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
         run: |
           gh label create solicitud-inscripcion --color fbca04 --description "Pendiente de confirmar inscripción" 2>/dev/null || true
           gh label create inscribir --color 0e8a16 --description "Confirma la inscripción en el curso" 2>/dev/null || true

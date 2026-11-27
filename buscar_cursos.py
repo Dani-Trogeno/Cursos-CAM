@@ -278,6 +278,16 @@ DIAS_ANTES = int(os.environ.get("AVISO_DIAS_ANTES", "3"))    # aviso "abre pront
 DIAS_CIERRE = int(os.environ.get("AVISO_DIAS_CIERRE", "2"))  # aviso "último aviso"
 NTFY_SERVIDOR = os.environ.get("NTFY_SERVIDOR", "https://ntfy.sh").rstrip("/")
 NTFY_TEMA = os.environ.get("NTFY_TEMA", "").strip()
+# Correo (Gmail con contraseña de aplicación). Secretos de GitHub:
+#   CORREO_REMITENTE (cuenta de Gmail), CORREO_PASSWORD (contraseña de aplicación),
+#   CORREO_DESTINO (una o varias direcciones separadas por comas).
+CORREO_REMITENTE = os.environ.get("CORREO_REMITENTE", "").strip()
+CORREO_PASSWORD = os.environ.get("CORREO_PASSWORD", "").replace(" ", "").strip()
+CORREO_DESTINO = [d.strip() for d in os.environ.get("CORREO_DESTINO", "").split(",") if d.strip()]
+SMTP_SERVIDOR = os.environ.get("SMTP_SERVIDOR", "smtp.gmail.com")
+SMTP_PUERTO = int(os.environ.get("SMTP_PUERTO", "465"))
+CORREO_ACTIVO = bool(CORREO_REMITENTE and CORREO_PASSWORD and CORREO_DESTINO)
+HAY_AVISOS = CORREO_ACTIVO or bool(NTFY_TEMA)
 MAX_AVISOS_SUELTOS = 6  # con más avisos que esto, se manda un único resumen
 
 TIPOS = ("nuevo", "pronto", "abierto", "cierre")
@@ -341,21 +351,64 @@ def enviar_ntfy(titulo: str, mensaje: str, tags: list[str], prioridad: int, url:
     return False
 
 
+def enviar_correo(titulo: str, mensaje: str, url: str) -> bool:
+    import smtplib
+    from email.message import EmailMessage
+    from html import escape
+
+    msg = EmailMessage()
+    msg["Subject"] = f"[Cursos MOC] {titulo}"
+    msg["From"] = f"Cursos MOC CAM <{CORREO_REMITENTE}>"
+    msg["To"] = ", ".join(CORREO_DESTINO)
+    msg.set_content(f"{mensaje}\n\n{url}\n")
+    html_cuerpo = "<br>".join(escape(l) for l in mensaje.split("\n"))
+    msg.add_alternative(
+        f"<div style='font-family:sans-serif;font-size:15px;line-height:1.5'>"
+        f"<h2 style='font-size:18px'>{escape(titulo)}</h2><p>{html_cuerpo}</p>"
+        f"<p><a href='{escape(url)}' style='background:#1d76db;color:#fff;padding:8px 14px;"
+        f"border-radius:6px;text-decoration:none'>Abrir</a></p>"
+        f"<p style='color:#888;font-size:12px'>Enviado automáticamente por el monitor de cursos MOC.</p></div>",
+        subtype="html")
+    for intento in range(3):
+        try:
+            with smtplib.SMTP_SSL(SMTP_SERVIDOR, SMTP_PUERTO, timeout=30) as smtp:
+                smtp.login(CORREO_REMITENTE, CORREO_PASSWORD)
+                smtp.send_message(msg)
+            return True
+        except smtplib.SMTPAuthenticationError as e:
+            print(f"  correo: usuario o contraseña de aplicación incorrectos ({e.smtp_code})", file=sys.stderr)
+            return False
+        except (smtplib.SMTPException, OSError) as e:
+            print(f"  correo falló ({e})", file=sys.stderr)
+            time.sleep(5 * (intento + 1))
+    return False
+
+
+def notificar(titulo: str, mensaje: str, tags: list[str], prioridad: int, url: str) -> bool:
+    """Envía el aviso por correo y/o ntfy, según lo que esté configurado."""
+    resultados = []
+    if CORREO_ACTIVO:
+        resultados.append(enviar_correo(titulo, mensaje, url))
+    if NTFY_TEMA:
+        resultados.append(enviar_ntfy(titulo, mensaje, tags, prioridad, url))
+    return bool(resultados) and all(resultados)
+
+
 def avisar_ntfy(eventos: list[tuple[str, dict]], primera_vez: bool) -> None:
     if not eventos:
         return
-    if not NTFY_TEMA:
-        print("NTFY_TEMA no configurado: no se envían notificaciones.")
+    if not HAY_AVISOS:
+        print("Ni correo ni ntfy configurados: no se envían notificaciones.")
         return
     if primera_vez or len(eventos) > MAX_AVISOS_SUELTOS:
         cuerpo = "\n\n".join(f"{AVISO[t][0]}\n{texto_curso(c)}" for t, c in eventos)
         titulo = "Cursos MOC disponibles" if primera_vez else f"{len(eventos)} avisos de cursos MOC"
-        enviar_ntfy(titulo, cuerpo[:3900], ["books"], 4, LISTADO)
+        notificar(titulo, cuerpo[:3900], ["books"], 4, LISTADO)
     else:
         for t, c in eventos:
             titulo, tag, prioridad = AVISO[t]
-            enviar_ntfy(titulo, texto_curso(c), [tag], prioridad, c["url"])
-    print(f"Enviados {len(eventos)} avisos a ntfy.")
+            notificar(titulo, texto_curso(c), [tag], prioridad, c["url"])
+    print(f"Enviados {len(eventos)} avisos ({'correo' if CORREO_ACTIVO else ''}{' ntfy' if NTFY_TEMA else ''}).")
 
 
 def toca_ejecutar() -> bool:
@@ -455,8 +508,8 @@ def main() -> int:
             ok, mensaje = inscribir(c["url"])
             print(("Inscrito: " if ok else "Fallo al inscribir: ") + mensaje)
             c["inscripcion_auto"] = {"fecha": ahora, "ok": ok, "mensaje": mensaje}
-            if NTFY_TEMA:
-                enviar_ntfy("✅ Inscrito automáticamente" if ok else "❌ Falló la inscripción automática",
+            if HAY_AVISOS:
+                notificar("✅ Inscrito automáticamente" if ok else "❌ Falló la inscripción automática",
                             mensaje if ok else f"{mensaje}\nTe pido confirmación en GitHub.",
                             ["white_check_mark" if ok else "x"], 4, c["url"])
             if ok:
@@ -656,8 +709,8 @@ def inscribir_desde_issue() -> int:
     ok, mensaje = inscribir(m.group(1))
     print(mensaje)
     Path("resultado.md").write_text(("✅ " if ok else "❌ ") + mensaje + "\n", "utf-8")
-    if NTFY_TEMA:
-        enviar_ntfy("✅ Inscrito en curso MOC" if ok else "❌ No se pudo inscribir", mensaje,
+    if HAY_AVISOS:
+        notificar("✅ Inscrito en curso MOC" if ok else "❌ No se pudo inscribir", mensaje,
                     ["white_check_mark" if ok else "x"], 4, os.environ.get("ISSUE_URL") or m.group(1))
     return 0 if ok else 1
 
@@ -665,8 +718,8 @@ def inscribir_desde_issue() -> int:
 def avisar_solicitud() -> int:
     """Tras crear el issue de confirmación, avisa por ntfy con enlace al issue."""
     titulo, url = sys.argv[sys.argv.index("--avisar-solicitud") + 1:][:2]
-    if NTFY_TEMA:
-        enviar_ntfy("📝 ¿Inscribir en este curso MOC?",
+    if HAY_AVISOS:
+        notificar("📝 ¿Inscribir en este curso MOC?",
                     f"{titulo}\n\nAbre el issue y ponle la etiqueta «inscribir» o comenta «inscribir».",
                     ["memo"], 4, url)
     return 0
@@ -788,11 +841,12 @@ def diagnostico_inscripcion() -> int:
 
 
 def prueba_ntfy() -> int:
-    if not NTFY_TEMA:
-        print("Falta el secreto NTFY_TEMA.", file=sys.stderr)
+    if not HAY_AVISOS:
+        print("Faltan los secretos CORREO_REMITENTE, CORREO_PASSWORD y CORREO_DESTINO.", file=sys.stderr)
         return 1
-    print(f"Enviando prueba a {NTFY_SERVIDOR}/{NTFY_TEMA[:3]}… (tema de {len(NTFY_TEMA)} caracteres)")
-    ok = enviar_ntfy("🔔 Prueba de Cursos MOC", "Si ves esto, los avisos funcionan.", ["bell"], 4, LISTADO)
+    if CORREO_ACTIVO:
+        print(f"Enviando correo de prueba desde {CORREO_REMITENTE[:3]}… a {len(CORREO_DESTINO)} destinatario(s)")
+    ok = notificar("🔔 Prueba de Cursos MOC", "Si ves esto, los avisos funcionan.", ["bell"], 4, LISTADO)
     print("Prueba enviada correctamente." if ok else "No se pudo enviar la prueba.")
     return 0 if ok else 1
 
