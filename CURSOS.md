@@ -1,6 +1,6 @@
 # Cursos MOC de la Comunidad de Madrid
 
-Actualizado: 2026-11-27T18:42:53+01:00 · 8 cursos MOC con inscripción abierta o próxima.
+Actualizado: 2026-11-27T18:46:21+01:00 · 8 cursos MOC con inscripción abierta o próxima.
 
 Solo se incluyen MOC que se superan viendo vídeos/recursos y haciendo cuestionarios (✅ confirmado en la ficha · ⚠️ revisar la ficha).
 

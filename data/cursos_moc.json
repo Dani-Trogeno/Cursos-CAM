@@ -22,7 +22,7 @@
     "encaja": "no",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-guia-promocion-bienestar-emocional-materiales-accion-tutorial-0": {
@@ -46,7 +46,7 @@
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-marco-normativo-gestion-administrativa-a0053": {
@@ -72,7 +72,7 @@
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-mentores-funcionarios-practicas-cuerpo-maestros-curso-26-27-2o-ed-a0043": {
@@ -99,7 +99,7 @@
     "encaja": "no",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-paisaje-luz-otra-mirada-a0085": {
@@ -121,7 +121,7 @@
     "encaja": "sí",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-prevencion-riesgos-laborales-0": {
@@ -145,7 +145,7 @@
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-prevencion-riesgos-laborales-equipos-directivos": {
@@ -173,7 +173,7 @@
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-proteccion-bienestar-infantil-adolescente-centros-educativos-nivel-inicial": {
@@ -193,16 +193,17 @@
     "perfil": "sí",
     "perfil_motivos": [],
     "encaja": "sí",
+    "propuesta": {
+      "fecha": "2026-11-27T18:42:53+01:00",
+      "token": "53d8a943"
+    },
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true,
-    "propuesta": {
-      "fecha": "2026-11-27T18:42:53+01:00",
-      "token": "53d8a943"
-    }
+    "aprobado": "2026-11-27T18:46:21+01:00"
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-recursos-practicos-estimulacion-lenguaje-educacion-infantil-a0038": {
     "url": "https://innovacionyformacion.educa.madrid.org/actividades/moc-recursos-practicos-estimulacion-lenguaje-educacion-infantil-a0038",
@@ -223,16 +224,17 @@
       "Contenido de Educación Infantil, no de la etapa de la cuenta."
     ],
     "encaja": "posible",
+    "propuesta": {
+      "fecha": "2026-11-27T18:42:53+01:00",
+      "token": "8bad9dc9"
+    },
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true,
-    "propuesta": {
-      "fecha": "2026-11-27T18:42:53+01:00",
-      "token": "8bad9dc9"
-    }
+    "aprobado": "2026-11-27T18:46:21+01:00"
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-sostenibilidad-internacionalizacion": {
     "url": "https://innovacionyformacion.educa.madrid.org/actividades/moc-sostenibilidad-internacionalizacion",
@@ -255,7 +257,7 @@
     "avisos": [
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-un-mundo-circular-economia-circular-futuro-curso-avanzado-a0096": {
@@ -279,7 +281,7 @@
     "encaja": "posible",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/moc-un-mundo-circular-formacion-basica-a0094": {
@@ -303,7 +305,7 @@
     "encaja": "posible",
     "visto_por_primera_vez": "2026-11-26T15:08:21+01:00",
     "avisos": [],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   },
   "https://innovacionyformacion.educa.madrid.org/actividades/riesgos-emergencias-proteccion-civil-centros-educativos": {
@@ -334,7 +336,7 @@
       "abierto",
       "nuevo"
     ],
-    "ultima_vez_visto": "2026-11-27T18:42:53+01:00",
+    "ultima_vez_visto": "2026-11-27T18:46:21+01:00",
     "en_listado": true
   }
 }
